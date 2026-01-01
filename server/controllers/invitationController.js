@@ -3,6 +3,7 @@ import Document from '../models/Document.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 import { emailService } from '../services/emailService.js';
+import { clerkClient } from '@clerk/clerk-sdk-node';
 
 const inviteRateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
@@ -284,6 +285,9 @@ export const validateInvitation = async (req, res) => {
 };
 
 // Accept invitation
+// Add this import at the top of your file
+import { clerkClient } from '@clerk/clerk-sdk-node';
+
 export const acceptInvitation = async (req, res) => {
   try {
     const { token } = req.params;
@@ -296,9 +300,42 @@ export const acceptInvitation = async (req, res) => {
     }
 
     // Find user by Clerk ID
-    const user = await User.findOne({ clerkId: userId });
+    let user = await User.findOne({ clerkId: userId });
+    
+    // If user doesn't exist, create them from Clerk data
+    // This handles the race condition where webhook hasn't processed yet
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.log('User not found in DB, fetching from Clerk and creating...');
+      
+      try {
+        // Get user details from Clerk
+        const clerkUser = await clerkClient.users.getUser(userId);
+        
+        const primaryEmail = clerkUser.emailAddresses.find(
+          email => email.id === clerkUser.primaryEmailAddressId
+        );
+        const googleAccount = clerkUser.externalAccounts?.find(
+          account => account.provider === 'google'
+        );
+
+        // Create user in your database with same structure as webhook
+        user = await User.create({
+          clerkId: userId,
+          email: primaryEmail?.emailAddress,
+          name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Unknown User',
+          provider: googleAccount ? 'google' : 'email',
+          googleId: googleAccount?.providerUserId || null,
+          profileImage: clerkUser.imageUrl,
+          emailVerified: primaryEmail?.verification?.status === 'verified'
+        });
+        
+        console.log('User created in DB from Clerk data:', user._id, user.email);
+      } catch (clerkError) {
+        console.error('Error fetching user from Clerk:', clerkError);
+        return res.status(500).json({ 
+          error: 'Failed to create user account. Please try again in a moment.' 
+        });
+      }
     }
 
     // Find invitation by token
