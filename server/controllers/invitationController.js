@@ -284,10 +284,6 @@ export const validateInvitation = async (req, res) => {
   }
 };
 
-// Accept invitation
-// Add this import at the top of your file
-import { clerkClient } from '@clerk/clerk-sdk-node';
-
 export const acceptInvitation = async (req, res) => {
   try {
     const { token } = req.params;
