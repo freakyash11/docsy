@@ -17,8 +17,9 @@ const documentSchema = new mongoose.Schema({
   },
   collaborators: [{
     userId: {
-      type: String,
-      ref: 'User'
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
     },
     email: { type: String, required: true },
     permission: {
