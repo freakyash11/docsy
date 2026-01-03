@@ -3,7 +3,7 @@ import Quill from "quill"
 import "quill/dist/quill.snow.css"
 import { io } from "socket.io-client"
 import { useParams, useNavigate } from "react-router-dom"
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth, useUser } from '@clerk/clerk-react'
 import { Share2, Globe, Lock, Users, Crown, Eye } from "lucide-react"
 import ShareModal from "./components/ShareModal"
 
@@ -162,6 +162,7 @@ function StatusPill({ userRole, isPublic }) {
 export default function TextEditor({ role = 'owner' }) {
   const { getToken, isSignedIn } = useAuth();
   const { id: documentId } = useParams();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [title, setTitle] = useState("Untitled Document");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
