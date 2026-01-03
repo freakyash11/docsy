@@ -60,12 +60,14 @@ export const getUserDocuments = async (req, res) => {
       return res.status(404).json({ error: 'User not found in database' });
     }
 
-    const mongoUserIdString = user._id.toString();
-    console.log('🔍 Current user MongoDB _id (string):', mongoUserIdString);
+    const mongoUserId = user._id;
+    const mongoUserIdString = mongoUserId.toString();
+    console.log('🔍 Current user MongoDB _id:', mongoUserIdString);
 
-    // Get ALL documents - populate ownerId to get owner name
+    // Use .lean() to get plain objects and avoid Mongoose schema issues
     const allDocuments = await Document.find({})
       .populate('ownerId', 'name email')
+      .lean()  // ← This is the key - returns plain JS objects
       .sort({ updatedAt: -1 });
 
     console.log('📊 Total documents in DB:', allDocuments.length);
@@ -74,7 +76,7 @@ export const getUserDocuments = async (req, res) => {
     allDocuments.forEach((doc, index) => {
       console.log(`\n📄 Document ${index + 1}: ${doc._id}`);
       console.log(`   Title: "${doc.title}"`);
-      console.log(`   OwnerId: ${doc.ownerId?._id?.toString()} (type: ${typeof doc.ownerId})`);
+      console.log(`   OwnerId: ${doc.ownerId?._id?.toString()}`);
       console.log(`   Owner match: ${doc.ownerId?._id?.toString() === mongoUserIdString}`);
       console.log(`   Collaborators (${doc.collaborators?.length || 0}):`);
       
@@ -100,7 +102,7 @@ export const getUserDocuments = async (req, res) => {
         return collabUserId === mongoUserIdString;
       });
       
-      console.log(`\n🔍 Filtering ${doc._id}: isOwner=${isOwner}, isCollaborator=${isCollaborator}`);
+      console.log(`🔍 Filtering ${doc._id}: isOwner=${isOwner}, isCollaborator=${isCollaborator}`);
       
       return isOwner || isCollaborator;
     });
@@ -111,7 +113,7 @@ export const getUserDocuments = async (req, res) => {
       const isOwner = doc.ownerId?._id?.toString() === mongoUserIdString;
       
       return {
-        id: doc._id,
+        id: doc._id.toString(),
         title: doc.title,
         owner: doc.ownerId?.name || 'Unknown',
         isOwner: isOwner,
