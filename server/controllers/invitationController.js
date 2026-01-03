@@ -485,12 +485,13 @@ export const updateDocumentPermissions = async (req, res) => {
         }
       }
 
-      // Emit socket events for role changes
+      // Emit socket events ONLY if there are actual role changes
       if (roleChanges.length > 0) {
         const io = req.app.get('io');
         
-        for (const change of roleChanges) {
-          // Notify the specific collaborator about their role change
+        // Emit individual role change events for each affected user
+        roleChanges.forEach(change => {
+          console.log('Emitting role change for:', change.email);
           io.to(documentId).emit('collaborator-role-changed', {
             documentId: documentId,
             email: change.email,
@@ -499,15 +500,14 @@ export const updateDocumentPermissions = async (req, res) => {
             newRole: change.newRole,
             updatedBy: user.email
           });
+        });
 
-          console.log('Emitted role change:', change);
-        }
-
-        // Also emit a general update to refresh collaborator lists
+        // Emit a single general permissions update (no role info, just for UI refresh)
         io.to(documentId).emit('permissions-updated', {
           documentId: documentId,
-          collaborators: document.collaborators,
-          isPublic: document.isPublic
+          isPublic: document.isPublic,
+          collaboratorsCount: document.collaborators.length
+          // Don't send full collaborators array to avoid triggering role logic
         });
       }
     }
