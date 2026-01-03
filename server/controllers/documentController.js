@@ -64,33 +64,18 @@ export const getUserDocuments = async (req, res) => {
     const mongoUserIdString = mongoUserId.toString();
     console.log('🔍 Current user MongoDB _id:', mongoUserIdString);
 
-    // Use .lean() to get plain objects and avoid Mongoose schema issues
+    // DEBUG: Use native MongoDB driver to see raw data
+    const rawDocs = await Document.collection.find({}).toArray();
+    console.log('\n🔍 RAW MONGODB DATA (first doc):');
+    console.log(JSON.stringify(rawDocs[0], null, 2));
+
+    // Use .lean() to get plain objects
     const allDocuments = await Document.find({})
       .populate('ownerId', 'name email')
-      .lean()  // ← This is the key - returns plain JS objects
+      .lean()
       .sort({ updatedAt: -1 });
 
-    console.log('📊 Total documents in DB:', allDocuments.length);
-
-    // Debug: Log each document's details
-    allDocuments.forEach((doc, index) => {
-      console.log(`\n📄 Document ${index + 1}: ${doc._id}`);
-      console.log(`   Title: "${doc.title}"`);
-      console.log(`   OwnerId: ${doc.ownerId?._id?.toString()}`);
-      console.log(`   Owner match: ${doc.ownerId?._id?.toString() === mongoUserIdString}`);
-      console.log(`   Collaborators (${doc.collaborators?.length || 0}):`);
-      
-      if (doc.collaborators && doc.collaborators.length > 0) {
-        doc.collaborators.forEach((collab, i) => {
-          const collabUserId = collab.userId?.toString();
-          const matches = collabUserId === mongoUserIdString;
-          console.log(`     ${i + 1}. userId: ${collabUserId}, email: ${collab.email}, permission: ${collab.permission}`);
-          console.log(`        Matches current user: ${matches}`);
-        });
-      } else {
-        console.log('     (no collaborators)');
-      }
-    });
+    console.log('\n📊 Total documents in DB:', allDocuments.length);
 
     // Filter documents where user is owner or collaborator
     const documents = allDocuments.filter(doc => {
@@ -98,11 +83,25 @@ export const getUserDocuments = async (req, res) => {
       const isOwner = docOwnerId === mongoUserIdString;
       
       const isCollaborator = doc.collaborators?.some(collab => {
-        const collabUserId = collab.userId?.toString();
-        return collabUserId === mongoUserIdString;
+        // Try multiple ways to access userId
+        const userId1 = collab.userId?.toString();
+        const userId2 = collab['userId']?.toString();
+        const userId3 = collab.user_id?.toString();
+        
+        console.log(`\n🔍 Collaborator debug:`, {
+          email: collab.email,
+          userId: collab.userId,
+          'userId type': typeof collab.userId,
+          'collab keys': Object.keys(collab),
+          'full collab': JSON.stringify(collab)
+        });
+        
+        return userId1 === mongoUserIdString || 
+               userId2 === mongoUserIdString || 
+               userId3 === mongoUserIdString;
       });
       
-      console.log(`🔍 Filtering ${doc._id}: isOwner=${isOwner}, isCollaborator=${isCollaborator}`);
+      console.log(`\n🔍 Filtering ${doc._id}: isOwner=${isOwner}, isCollaborator=${isCollaborator}`);
       
       return isOwner || isCollaborator;
     });
