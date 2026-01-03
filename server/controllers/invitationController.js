@@ -441,13 +441,14 @@ export const updateDocumentPermissions = async (req, res) => {
       // Track which collaborators had role changes for socket notifications
       const roleChanges = [];
 
-      for (const updatedCollab of updates.collaborators) {
-        // Find existing collaborator in document
+      // CRITICAL FIX: Preserve userId when updating collaborators
+      document.collaborators = updates.collaborators.map(updatedCollab => {
+        // Find existing collaborator to preserve userId
         const existingCollab = document.collaborators.find(
           c => c.email?.toLowerCase() === updatedCollab.email?.toLowerCase()
         );
 
-        // Check if role actually changed
+        // Check if role changed
         if (existingCollab && existingCollab.permission !== updatedCollab.permission) {
           roleChanges.push({
             email: updatedCollab.email,
@@ -456,14 +457,15 @@ export const updateDocumentPermissions = async (req, res) => {
             newRole: updatedCollab.permission
           });
         }
-      }
 
-      // Update collaborators array
-      document.collaborators = updates.collaborators.map(collab => ({
-        userId: collab.userId,
-        email: collab.email,
-        permission: collab.permission || 'viewer'
-      }));
+        // Preserve userId from existing collaborator, or use the one from update
+        return {
+          userId: existingCollab?.userId || updatedCollab.userId,  // ← PRESERVE userId
+          email: updatedCollab.email,
+          permission: updatedCollab.permission || 'viewer'
+        };
+      });
+      
       console.log('Updated collaborators:', document.collaborators.length);
 
       // Update invitation records to match the new roles
