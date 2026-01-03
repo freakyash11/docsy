@@ -104,7 +104,7 @@ export const getUserDocuments = async (req, res) => {
 
 // Get single document by ID
 // Backend: GET /api/documents
-export const getDocuments = async (req, res) => {
+export const getDocument = async (req, res) => {
   try {
     const userId = req.userId; // From auth middleware
     
