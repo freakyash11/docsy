@@ -63,25 +63,52 @@ export const getUserDocuments = async (req, res) => {
     const mongoUserIdString = user._id.toString();
     console.log('🔍 Current user MongoDB _id (string):', mongoUserIdString);
 
-    // Get ALL documents and filter in JavaScript
+    // Get ALL documents - populate ownerId to get owner name
     const allDocuments = await Document.find({})
+      .populate('ownerId', 'name email')
       .sort({ updatedAt: -1 });
 
     console.log('📊 Total documents in DB:', allDocuments.length);
 
+    // Debug: Log each document's details
+    allDocuments.forEach((doc, index) => {
+      console.log(`\n📄 Document ${index + 1}: ${doc._id}`);
+      console.log(`   Title: "${doc.title}"`);
+      console.log(`   OwnerId: ${doc.ownerId?._id?.toString()} (type: ${typeof doc.ownerId})`);
+      console.log(`   Owner match: ${doc.ownerId?._id?.toString() === mongoUserIdString}`);
+      console.log(`   Collaborators (${doc.collaborators?.length || 0}):`);
+      
+      if (doc.collaborators && doc.collaborators.length > 0) {
+        doc.collaborators.forEach((collab, i) => {
+          const collabUserId = collab.userId?.toString();
+          const matches = collabUserId === mongoUserIdString;
+          console.log(`     ${i + 1}. userId: ${collabUserId}, email: ${collab.email}, permission: ${collab.permission}`);
+          console.log(`        Matches current user: ${matches}`);
+        });
+      } else {
+        console.log('     (no collaborators)');
+      }
+    });
+
     // Filter documents where user is owner or collaborator
     const documents = allDocuments.filter(doc => {
-      const isOwner = doc.ownerId?.toString() === mongoUserIdString;
-      const isCollaborator = doc.collaborators?.some(
-        collab => collab.userId?.toString() === mongoUserIdString
-      );
+      const docOwnerId = doc.ownerId?._id?.toString();
+      const isOwner = docOwnerId === mongoUserIdString;
+      
+      const isCollaborator = doc.collaborators?.some(collab => {
+        const collabUserId = collab.userId?.toString();
+        return collabUserId === mongoUserIdString;
+      });
+      
+      console.log(`\n🔍 Filtering ${doc._id}: isOwner=${isOwner}, isCollaborator=${isCollaborator}`);
+      
       return isOwner || isCollaborator;
     });
 
-    console.log('✅ Documents after filtering:', documents.length);
+    console.log('\n✅ Documents after filtering:', documents.length);
 
     const formattedDocs = documents.map(doc => {
-      const isOwner = doc.ownerId?.toString() === mongoUserIdString;
+      const isOwner = doc.ownerId?._id?.toString() === mongoUserIdString;
       
       return {
         id: doc._id,
@@ -103,76 +130,62 @@ export const getUserDocuments = async (req, res) => {
 };
 
 // Get single document by ID
-// Backend: GET /api/documents
 export const getDocument = async (req, res) => {
   try {
-    const userId = req.userId; // From auth middleware
-    console.log('=== GET DOCUMENTS DEBUG ===');
-    console.log('1. Clerk userId:', userId);
-    const user = await User.findOne({ clerkId: userId });
-    if (!user) {
-      console.log('ERROR: User not found in database');
-      return res.status(404).json({ error: 'User not found' });
+    console.log('getDocument called - id:', req.params.id, 'userId:', req.userId);
+    const { id } = req.params;
+    const userId = req.userId;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid document ID' });
     }
     
-    console.log('2. User found - MongoDB _id:', user._id.toString());
-    console.log('3. User email:', user.email);
-    // Find documents where user is owner OR collaborator
-    const documents = await Document.find({
-      $or: [
-        { ownerId: user._id }, // Documents owned by user
-        { 'collaborators.userId': user._id } // Documents where user is collaborator
-      ]
-    })
-    .populate('ownerId', 'name email profileImage')
-    .sort({ updatedAt: -1 });
-    console.log('4. Documents found:', documents.length);
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const mongoUserId = user._id;
 
-    documents.forEach(doc => {
-      console.log(`  - Doc ${doc._id}: "${doc.title}"`);
-      console.log(`    Owner: ${doc.ownerId._id} (${doc.ownerId.name})`);
-      console.log(`    Is owner: ${doc.ownerId._id.toString() === user._id.toString()}`);
-      console.log(`    Collaborators:`, doc.collaborators.map(c => ({
-        userId: c.userId?.toString(),
-        email: c.email,
-        permission: c.permission
-      })));
-    });
-
-    // Map documents and add role information
-    const documentsWithRole = documents.map(doc => {
-      const isOwner = doc.ownerId._id.toString() === user._id.toString();
-      const collaborator = doc.collaborators.find(
-        c => c.userId?.toString() === user._id.toString()
-      );
-
-      return {
-        id: doc._id.toString(), // Changed to 'id' to match your frontend
-        _id: doc._id,
-        title: doc.title,
-        content: doc.content,
-        isPublic: doc.isPublic,
-        owner: doc.ownerId.name, // Add owner name
-        ownerId: doc.ownerId,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-        // Add user's role in this document
-        userRole: isOwner ? 'owner' : (collaborator?.permission || 'viewer'),
-        isOwner: isOwner,
-        collaborators: doc.collaborators.length // Count of collaborators for dashboard display
-      };
-    });
-    console.log('5. Returning', documentsWithRole.length, 'documents');
-    console.log('=========================\n');
-
+    const document = await Document.findById(id)
+      .populate('ownerId', 'name email')
+      .populate('collaborators.userId', 'name email')
+      .populate('email clerkId');
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check permissions
+    const isOwner = document.ownerId._id.toString() === mongoUserId.toString();
+    const isCollaborator = document.collaborators.some(
+      collab => collab.userId._id.toString() === mongoUserId.toString()
+    );
+    
+    if (!isOwner && !isCollaborator && !document.isPublic) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    console.log('Document fetched:', document._id);
+    
     res.json({
-      success: true,
-      documents: documentsWithRole
+      id: document._id,
+      title: document.title,
+      data: document.data,
+      owner: document.ownerId.name,
+      isOwner,
+      collaborators: document.collaborators.map(collab => ({
+        userId: collab.userId?._id,
+        name: collab.userId.name,
+        email: collab.userId.email,
+        permission: collab.permission
+      })),
+      isPublic: document.isPublic,
+      createdAt: document.createdAt,
+      updatedAt: document.updatedAt
     });
-
   } catch (error) {
-    console.error('Get documents error:', error);
-    res.status(500).json({ error: 'Failed to fetch documents' });
+    console.error('Get document detailed error:', error.message, 'Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch document' });
   }
 };
 
