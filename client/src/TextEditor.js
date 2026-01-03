@@ -350,41 +350,88 @@ export default function TextEditor({ role = 'owner' }) {
   }, [socket, quill, documentId]);
 
   useEffect(() => {
-    if (!socket) return;
+  if (!socket) return;
 
-    const handlePermissionsUpdate = (data) => {
-      console.log('Permissions updated:', data);
+  const handleRoleChanged = (data) => {
+    console.log('Collaborator role changed:', data);
+    
+    // Check if this event is for the current user
+    const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
+    const isCurrentUser = data.email === currentUserEmail || data.userId === user?.id;
+    
+    if (isCurrentUser) {
+      const newRole = data.newRole;
+      console.log(`Your role changed from ${data.oldRole} to ${newRole}`);
       
-      if (data.updates.isPublic !== undefined) {
-        setPermissions(prev => ({ ...prev, isPublic: data.updates.isPublic }));
-        setIsPublicDoc(data.updates.isPublic);
+      setUserRole(newRole);
+      
+      if (newRole === "viewer" && quill) {
+        quill.disable();
+        alert(`Your access has been changed to view-only by ${data.updatedBy}`);
+      } else if (newRole === "editor" && quill) {
+        quill.enable();
+        alert(`Your access has been upgraded to editor by ${data.updatedBy}`);
       }
       
-      if (data.updates.collaborators) {
-        setPermissions(prev => ({ ...prev, collaborators: data.updates.collaborators }));
-        fetchCollaborators(); // Refresh collaborator list
+      // Refresh collaborators list
+      fetchCollaborators();
+    }
+  };
+
+  socket.on("collaborator-role-changed", handleRoleChanged);
+
+  return () => {
+    socket.off("collaborator-role-changed", handleRoleChanged);
+  };
+}, [socket, quill, user, fetchCollaborators]);
+
+// 2. Listen for general permission updates (keep this for public/private changes)
+useEffect(() => {
+  if (!socket) return;
+
+  const handlePermissionsUpdate = (data) => {
+    console.log('General permissions updated:', data);
+    
+    // Update public/private status
+    if (data.isPublic !== undefined) {
+      setIsPublicDoc(data.isPublic);
+    }
+    
+    // Update collaborators list in the UI
+    if (data.collaborators) {
+      // Find current user's permission in the updated collaborators list
+      const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
+      const currentUserId = user?.id;
+      
+      const userCollab = data.collaborators.find(c => 
+        c.email === currentUserEmail || 
+        c.userId?.toString() === currentUserId
+      );
+      
+      if (userCollab) {
+        const newRole = userCollab.permission;
+        console.log('Updated role from permissions-updated:', newRole);
         
-        const userCollab = data.updates.collaborators.find(c => c.isCurrentUser);
-        if (userCollab) {
-          const newRole = userCollab.permission;
-          setUserRole(newRole);
-          if (newRole === "viewer" && quill) {
-            quill.disable();
-            alert("Your access has been changed to view-only");
-          } else if (newRole === "editor" && quill) {
-            quill.enable();
-            alert("Your access has been changed to editor");
-          }
+        setUserRole(newRole);
+        
+        if (newRole === "viewer" && quill) {
+          quill.disable();
+        } else if (newRole === "editor" && quill) {
+          quill.enable();
         }
       }
-    };
+      
+      // Refresh collaborators list
+      fetchCollaborators();
+    }
+  };
 
-    socket.on("permissions-updated", handlePermissionsUpdate);
+  socket.on("permissions-updated", handlePermissionsUpdate);
 
-    return () => {
-      socket.off("permissions-updated", handlePermissionsUpdate);
-    };
-  }, [socket, quill, fetchCollaborators]);
+  return () => {
+    socket.off("permissions-updated", handlePermissionsUpdate);
+  };
+}, [socket, quill, user, fetchCollaborators]);
 
   useEffect(() => {
     if (socket == null || quill == null || userRole === 'viewer' || !userRole) return;

@@ -438,6 +438,27 @@ export const updateDocumentPermissions = async (req, res) => {
     }
 
     if (updates.collaborators) {
+      // Track which collaborators had role changes for socket notifications
+      const roleChanges = [];
+
+      for (const updatedCollab of updates.collaborators) {
+        // Find existing collaborator in document
+        const existingCollab = document.collaborators.find(
+          c => c.email?.toLowerCase() === updatedCollab.email?.toLowerCase()
+        );
+
+        // Check if role actually changed
+        if (existingCollab && existingCollab.permission !== updatedCollab.permission) {
+          roleChanges.push({
+            email: updatedCollab.email,
+            userId: existingCollab.userId,
+            oldRole: existingCollab.permission,
+            newRole: updatedCollab.permission
+          });
+        }
+      }
+
+      // Update collaborators array
       document.collaborators = updates.collaborators.map(collab => ({
         userId: collab.userId,
         email: collab.email,
@@ -445,10 +466,9 @@ export const updateDocumentPermissions = async (req, res) => {
       }));
       console.log('Updated collaborators:', document.collaborators.length);
 
-      // ===== ADD THIS: Also update the invitation roles =====
+      // Update invitation records to match the new roles
       for (const collab of updates.collaborators) {
         if (collab.email) {
-          // Update the invitation record to match the new role
           const updateResult = await Invitation.updateOne(
             {
               docId: documentId,
@@ -462,7 +482,32 @@ export const updateDocumentPermissions = async (req, res) => {
           console.log(`Updated invitation role for ${collab.email}:`, updateResult.modifiedCount);
         }
       }
-      // ===== END OF NEW CODE =====
+
+      // Emit socket events for role changes
+      if (roleChanges.length > 0) {
+        const io = req.app.get('io');
+        
+        for (const change of roleChanges) {
+          // Notify the specific collaborator about their role change
+          io.to(documentId).emit('collaborator-role-changed', {
+            documentId: documentId,
+            email: change.email,
+            userId: change.userId?.toString(),
+            oldRole: change.oldRole,
+            newRole: change.newRole,
+            updatedBy: user.email
+          });
+
+          console.log('Emitted role change:', change);
+        }
+
+        // Also emit a general update to refresh collaborator lists
+        io.to(documentId).emit('permissions-updated', {
+          documentId: documentId,
+          collaborators: document.collaborators,
+          isPublic: document.isPublic
+        });
+      }
     }
 
     await document.save();
@@ -482,7 +527,6 @@ export const updateDocumentPermissions = async (req, res) => {
     res.status(500).json({ error: 'Failed to update document permissions' });
   }
 };
-
 
 export const revokeInvitation = async (req, res) => {
   try {

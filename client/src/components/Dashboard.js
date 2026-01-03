@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 
 export default function Dashboard() {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
+  const socketRef = useRef(null);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
 
@@ -30,6 +33,93 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, [backendUrl, getToken]);
+
+  // Initialize socket connection
+  useEffect(() => {
+    const connectSocket = async () => {
+      try {
+        const token = await getToken();
+        
+        const socket = io(backendUrl, {
+          auth: { token },
+          transports: ['websocket'],
+          secure: true,
+          withCredentials: true,
+          path: '/socket.io/',
+        });
+
+        socket.on('connect', () => {
+          console.log('Dashboard socket connected');
+        });
+
+        socket.on('connect_error', (err) => {
+          console.error('Dashboard socket error:', err);
+        });
+
+        socketRef.current = socket;
+      } catch (error) {
+        console.error('Failed to connect dashboard socket:', error);
+      }
+    };
+
+    connectSocket();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [backendUrl, getToken]);
+
+  // Listen for role changes and permission updates
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !user) return;
+
+    const currentUserEmail = user.primaryEmailAddress?.emailAddress;
+    const currentUserId = user.id;
+
+    // Listen for when THIS user's collaborator role changes
+    const handleRoleChanged = (data) => {
+      console.log('Dashboard: Role changed event', data);
+      
+      // Check if this event affects the current user
+      const isCurrentUser = 
+        data.email?.toLowerCase() === currentUserEmail?.toLowerCase() || 
+        data.userId === currentUserId;
+      
+      if (isCurrentUser) {
+        console.log('Dashboard: Your role changed, refreshing documents...');
+        // Refresh the documents list to show updated access
+        fetchDocuments();
+      }
+    };
+
+    // Listen for general permission updates that might affect document visibility
+    const handlePermissionsUpdated = (data) => {
+      console.log('Dashboard: Permissions updated for document', data.documentId);
+      
+      // Check if current user is in the updated collaborators list
+      const isAffected = data.collaborators?.some(c => 
+        c.email?.toLowerCase() === currentUserEmail?.toLowerCase() || 
+        c.userId?.toString() === currentUserId
+      );
+      
+      if (isAffected) {
+        console.log('Dashboard: You are affected, refreshing documents...');
+        fetchDocuments();
+      }
+    };
+
+    socket.on('collaborator-role-changed', handleRoleChanged);
+    socket.on('permissions-updated', handlePermissionsUpdated);
+
+    return () => {
+      socket.off('collaborator-role-changed', handleRoleChanged);
+      socket.off('permissions-updated', handlePermissionsUpdated);
+    };
+  }, [user, fetchDocuments]);
 
   const createDocument = useCallback(async () => {
     if (creating) return;
