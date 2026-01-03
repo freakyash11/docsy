@@ -107,12 +107,16 @@ export const getUserDocuments = async (req, res) => {
 export const getDocument = async (req, res) => {
   try {
     const userId = req.userId; // From auth middleware
-    
+    console.log('=== GET DOCUMENTS DEBUG ===');
+    console.log('1. Clerk userId:', userId);
     const user = await User.findOne({ clerkId: userId });
     if (!user) {
+      console.log('ERROR: User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
-
+    
+    console.log('2. User found - MongoDB _id:', user._id.toString());
+    console.log('3. User email:', user.email);
     // Find documents where user is owner OR collaborator
     const documents = await Document.find({
       $or: [
@@ -122,6 +126,18 @@ export const getDocument = async (req, res) => {
     })
     .populate('ownerId', 'name email profileImage')
     .sort({ updatedAt: -1 });
+    console.log('4. Documents found:', documents.length);
+
+    documents.forEach(doc => {
+      console.log(`  - Doc ${doc._id}: "${doc.title}"`);
+      console.log(`    Owner: ${doc.ownerId._id} (${doc.ownerId.name})`);
+      console.log(`    Is owner: ${doc.ownerId._id.toString() === user._id.toString()}`);
+      console.log(`    Collaborators:`, doc.collaborators.map(c => ({
+        userId: c.userId?.toString(),
+        email: c.email,
+        permission: c.permission
+      })));
+    });
 
     // Map documents and add role information
     const documentsWithRole = documents.map(doc => {
@@ -146,6 +162,8 @@ export const getDocument = async (req, res) => {
         collaborators: doc.collaborators.length // Count of collaborators for dashboard display
       };
     });
+    console.log('5. Returning', documentsWithRole.length, 'documents');
+    console.log('=========================\n');
 
     res.json({
       success: true,
