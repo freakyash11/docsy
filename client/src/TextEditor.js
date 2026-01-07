@@ -369,6 +369,9 @@ export default function TextEditor() {
         
         setUserRole(newRole);
         
+        // CRITICAL: Tell the socket to refresh its cached role
+        socket.emit('refresh-role', documentId);
+        
         // Update Quill editor state
         if (quill) {
           if (newRole === "viewer") {
@@ -390,7 +393,7 @@ export default function TextEditor() {
     return () => {
       socket.off("collaborator-role-changed", handleRoleChanged);
     };
-  }, [socket, quill, user, fetchCollaborators]);
+  }, [socket, quill, user, documentId, fetchCollaborators]);
 
   // Listen for general permission updates - NO ALERTS, NO ROLE UPDATES
   useEffect(() => {

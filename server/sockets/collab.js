@@ -78,6 +78,7 @@ function setupSocket(server, redis) {
         try {
           const document = await findOrCreateDocument(documentId);
           socket.join(documentId);
+          socket.documentId = documentId; // Store for later use
           
           // Determine user's role for this document
           let userRole = 'viewer'; // Default to viewer
@@ -126,6 +127,43 @@ function setupSocket(server, redis) {
         }
       });
 
+      // NEW: Handler to refresh user role when permissions change
+      socket.on("refresh-role", async (documentId) => {
+        console.log('refresh-role requested for user:', socket.userId, 'document:', documentId);
+        
+        try {
+          const document = await Document.findById(documentId);
+          if (!document) {
+            console.log('Document not found for role refresh');
+            return;
+          }
+
+          let userRole = 'viewer';
+          
+          if (document.ownerId && socket.mongoUserId && 
+              document.ownerId.toString() === socket.mongoUserId) {
+            userRole = 'owner';
+          } else if (socket.mongoUserId) {
+            const collaborator = document.collaborators.find(
+              c => c.userId && c.userId.toString() === socket.mongoUserId
+            );
+            
+            if (collaborator) {
+              userRole = collaborator.permission;
+            } else if (document.isPublic) {
+              userRole = 'viewer';
+            }
+          } else if (document.isPublic) {
+            userRole = 'viewer';
+          }
+          
+          socket.userRole = userRole;
+          console.log('Role refreshed to:', socket.userRole);
+        } catch (error) {
+          console.error('Error refreshing role:', error);
+        }
+      });
+
       socket.on("send-changes", (delta) => {
         // Block viewers from sending changes
         if (socket.userRole === 'viewer') {
@@ -142,7 +180,29 @@ function setupSocket(server, redis) {
       });
 
       socket.on("save-document", async (data) => {
-        // Block viewers from saving
+        // CRITICAL FIX: Refresh role from database before checking permissions
+        if (socket.documentId && socket.mongoUserId) {
+          try {
+            const document = await Document.findById(socket.documentId);
+            if (document) {
+              // Recalculate role from fresh database data
+              if (document.ownerId && document.ownerId.toString() === socket.mongoUserId) {
+                socket.userRole = 'owner';
+              } else {
+                const collaborator = document.collaborators.find(
+                  c => c.userId && c.userId.toString() === socket.mongoUserId
+                );
+                if (collaborator) {
+                  socket.userRole = collaborator.permission;
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error refreshing role on save:', err);
+          }
+        }
+
+        // Now check permissions with fresh role
         if (socket.userRole === 'viewer') {
           console.log('Blocked save from viewer:', socket.id);
           socket.emit('error', { message: 'You do not have permission to save this document' });
