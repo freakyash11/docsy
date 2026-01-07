@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const DocsyLanding = () => {
+  const navigate = useNavigate();
+
   // Handle smooth scrolling for anchor links (e.g. clicking "Features" in your layout header)
   useEffect(() => {
     const handleScroll = (e) => {
@@ -23,6 +26,11 @@ const DocsyLanding = () => {
       links.forEach(link => link.removeEventListener('click', handleScroll));
     };
   }, []);
+
+  // Handler for Try Demo button
+  const handleTryDemo = () => {
+    navigate('/demo');
+  };
 
   return (
     <div className="font-sans bg-white text-[#2D2D2D]">
@@ -47,7 +55,10 @@ const DocsyLanding = () => {
                 <a href="/auth" className="inline-block px-8 py-4 bg-[#3A86FF] text-white rounded-xl font-semibold hover:bg-blue-600 transition shadow-lg shadow-[#3A86FF]/30 text-center no-underline">
                     Start Writing
                 </a>
-                <button className="px-8 py-4 bg-white border-2 border-[#2D2D2D] text-[#2D2D2D] rounded-xl font-semibold hover:bg-[#F7F9FC] transition">
+                <button 
+                  onClick={handleTryDemo}
+                  className="px-8 py-4 bg-white border-2 border-[#2D2D2D] text-[#2D2D2D] rounded-xl font-semibold hover:bg-[#F7F9FC] transition"
+                >
                   Try Demo
                 </button>
               </div>
@@ -387,11 +398,14 @@ const DocsyLanding = () => {
           <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to write better together?</h2>
           <p className="text-xl mb-8 opacity-90">Join thousands of teams already using Docsy to collaborate seamlessly.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/auth" className ="inline-block px-8 py-4 bg-white text-[#3A86FF] rounded-xl font-semibold hover:bg-gray-50 transition shadow-xl text-center no-underline">
+            <a href="/auth" className="inline-block px-8 py-4 bg-white text-[#3A86FF] rounded-xl font-semibold hover:bg-gray-50 transition shadow-xl text-center no-underline">
               Get Started Free
             </a>
-            <button className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition">
-              Schedule Demo
+            <button 
+              onClick={handleTryDemo}
+              className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition"
+            >
+              Try Demo
             </button>
           </div>
           <p className="mt-6 text-sm opacity-75">No credit card required • Free forever • 5-minute setup</p>

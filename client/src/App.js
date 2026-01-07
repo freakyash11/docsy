@@ -13,6 +13,7 @@ import Layout from "./components/Layout";
 import Dashboard from './components/Dashboard';
 import InvitePage from './components/InvitePage';
 import DocsyLanding from './components/LandingPage';
+import DemoEditor from "./components/DemoEditor";
 //comment
 // Wrapper component to generate UUID only when the root route is rendered
 // const NewDocumentRedirect = () => {
@@ -40,6 +41,7 @@ function App() {
               </>
             } 
           />
+          <Route path="/demo" element={<DemoEditor />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/landing" element={
           <Layout>
