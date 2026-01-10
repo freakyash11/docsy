@@ -4,7 +4,7 @@ import "quill/dist/quill.snow.css"
 import { io } from "socket.io-client"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAuth, useUser } from '@clerk/clerk-react'
-import { Share2, Globe, Lock, Users, Crown, Eye } from "lucide-react"
+import { Share2, Globe, Lock, Users, Crown, Eye, Keyboard } from "lucide-react"
 import ShareModal from "./components/ShareModal"
 
 const SAVE_INTERVAL_MS = 2000
@@ -38,7 +38,79 @@ function getAvatarColor(email) {
   return colors[hash % colors.length];
 }
 
-function CollaboratorAvatar({ collaborator, index }) {
+// Utility to format relative time
+function getRelativeTime(timestamp) {
+  if (!timestamp) return '';
+  
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diffMs = now - then;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffSecs < 10) return 'just now';
+  if (diffSecs < 60) return `${diffSecs} seconds ago`;
+  if (diffMins === 1) return '1 minute ago';
+  if (diffMins < 60) return `${diffMins} minutes ago`;
+  if (diffHours === 1) return '1 hour ago';
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  
+  return then.toLocaleDateString();
+}
+
+function KeyboardShortcutsTooltip({ isOpen, onClose }) {
+  if (!isOpen) return null;
+  
+  const shortcuts = [
+    { keys: 'Ctrl/Cmd + B', action: 'Bold' },
+    { keys: 'Ctrl/Cmd + I', action: 'Italic' },
+    { keys: 'Ctrl/Cmd + U', action: 'Underline' },
+    { keys: 'Ctrl/Cmd + Z', action: 'Undo' },
+    { keys: 'Ctrl/Cmd + Y', action: 'Redo' },
+    { keys: 'Ctrl/Cmd + K', action: 'Insert Link' },
+    { keys: 'Ctrl/Cmd + Shift + 7', action: 'Numbered List' },
+    { keys: 'Ctrl/Cmd + Shift + 8', action: 'Bullet List' },
+  ];
+  
+  return (
+    <>
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-10 z-40"
+        onClick={onClose}
+      />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-50 w-full max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-ink">Keyboard Shortcuts</h3>
+          <button
+            onClick={onClose}
+            className="text-muted-text hover:text-slate-ink transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="space-y-2">
+          {shortcuts.map((shortcut, index) => (
+            <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+              <span className="text-sm text-slate-ink">{shortcut.action}</span>
+              <kbd className="px-2 py-1 bg-input-field text-muted-text text-xs rounded font-mono">
+                {shortcut.keys}
+              </kbd>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CollaboratorAvatar({ collaborator, index, isOnline = false }) {
   const [showTooltip, setShowTooltip] = useState(false)
   const initials = getInitials(collaborator.name || collaborator.email)
   const color = getAvatarColor(collaborator.email)
@@ -50,17 +122,28 @@ function CollaboratorAvatar({ collaborator, index }) {
       onMouseLeave={() => setShowTooltip(false)}
       style={{ marginLeft: index > 0 ? '-8px' : '0', zIndex: 10 - index }}
     >
-      <div 
-        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white ring-2 ring-white cursor-pointer hover:scale-110 transition-transform"
-        style={{ backgroundColor: color }}
-      >
-        {initials}
+      <div className="relative">
+        <div 
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white ring-2 ring-white cursor-pointer hover:scale-110 transition-transform"
+          style={{ backgroundColor: color }}
+        >
+          {initials}
+        </div>
+        
+        {/* Presence indicator */}
+        <div 
+          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+            isOnline ? 'bg-soft-green' : 'bg-cool-grey'
+          }`}
+        />
       </div>
       
       {showTooltip && (
         <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-slate-ink text-white px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg z-50">
           <div>{collaborator.name || collaborator.email}</div>
-          <div className="text-gray-300 capitalize">{collaborator.permission}</div>
+          <div className="text-gray-300 capitalize">
+            {isOnline ? `${collaborator.permission === 'editor' ? 'Editing' : 'Viewing'}` : 'Offline'}
+          </div>
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-ink rotate-45"></div>
         </div>
       )}
@@ -68,7 +151,7 @@ function CollaboratorAvatar({ collaborator, index }) {
   )
 }
 
-function CollaboratorAvatars({ collaborators }) {
+function CollaboratorAvatars({ collaborators, onlineUsers = [] }) {
   const maxVisible = 4
   const visibleCollaborators = collaborators.slice(0, maxVisible)
   const remaining = Math.max(0, collaborators.length - maxVisible)
@@ -77,9 +160,20 @@ function CollaboratorAvatars({ collaborators }) {
   
   return (
     <div className="flex items-center">
-      {visibleCollaborators.map((collab, index) => (
-        <CollaboratorAvatar key={collab.id || collab.email} collaborator={collab} index={index} />
-      ))}
+      {visibleCollaborators.map((collab, index) => {
+        const isOnline = onlineUsers.some(u => 
+          u.email?.toLowerCase() === collab.email?.toLowerCase() ||
+          u.userId === collab.id
+        );
+        return (
+          <CollaboratorAvatar 
+            key={collab.id || collab.email} 
+            collaborator={collab} 
+            index={index}
+            isOnline={isOnline}
+          />
+        );
+      })}
       {remaining > 0 && (
         <div 
           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold bg-cool-grey text-white ring-2 ring-white"
@@ -167,6 +261,7 @@ export default function TextEditor() {
   const [title, setTitle] = useState("Untitled Document");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [lastSaved, setLastSaved] = useState(null);
   const titleTimeoutRef = useRef(null);
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
@@ -180,6 +275,8 @@ export default function TextEditor() {
   const [userRole, setUserRole] = useState(null); 
   const [isPublicDoc, setIsPublicDoc] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -199,20 +296,21 @@ export default function TextEditor() {
       
       if (response.ok) {
         const data = await response.json();
-        // Filter for accepted invitations only and map to expected format
         const acceptedCollaborators = (data.invitations || [])
           .filter(inv => inv.status === 'accepted')
           .map(inv => ({
             id: inv.id,
             email: inv.email,
-            name: inv.name || inv.email.split('@')[0], // Use email prefix if no name
-            permission: inv.role // 'viewer' or 'editor'
+            name: inv.name || inv.email.split('@')[0],
+            permission: inv.role
           }));
         setCollaborators(acceptedCollaborators);
         
-        // Update public status from API response
         if (data.document) {
           setIsPublicDoc(data.document.isPublic);
+          if (data.document.updatedAt) {
+            setLastSaved(data.document.updatedAt);
+          }
         }
       }
     } catch (error) {
@@ -247,6 +345,7 @@ export default function TextEditor() {
       }
 
       setSaveStatus("saved");
+      setLastSaved(new Date().toISOString());
       setTimeout(() => setSaveStatus(""), 2000);
     } catch (error) {
       console.error('Error updating document title:', error);
@@ -345,19 +444,56 @@ export default function TextEditor() {
         quill.enable();
         console.log('Editor enabled for role:', data.role);
       }
+      
+      // Set initial online users list
+      if (data.onlineUsers) {
+        setOnlineUsers(data.onlineUsers);
+      }
     });
 
     socket.emit("get-document", documentId);
   }, [socket, quill, documentId]);
 
-  // Listen for specific role changes - THIS IS THE ONLY ONE THAT SHOWS ALERTS
+  // Listen for presence events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUserJoined = (data) => {
+      console.log('User joined:', data);
+      setOnlineUsers(prev => {
+        // Avoid duplicates
+        const exists = prev.some(u => 
+          u.email?.toLowerCase() === data.email?.toLowerCase() ||
+          u.userId === data.userId
+        );
+        if (exists) return prev;
+        return [...prev, data];
+      });
+    };
+
+    const handleUserLeft = (data) => {
+      console.log('User left:', data);
+      setOnlineUsers(prev => prev.filter(u => 
+        u.email?.toLowerCase() !== data.email?.toLowerCase() &&
+        u.userId !== data.userId
+      ));
+    };
+
+    socket.on("user-joined", handleUserJoined);
+    socket.on("user-left", handleUserLeft);
+
+    return () => {
+      socket.off("user-joined", handleUserJoined);
+      socket.off("user-left", handleUserLeft);
+    };
+  }, [socket]);
+
   useEffect(() => {
     if (!socket || !user) return;
 
     const handleRoleChanged = (data) => {
       console.log('Collaborator role changed:', data);
       
-      // Check if this event is for the current user
       const currentUserEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
       const isCurrentUser = 
         data.email?.toLowerCase() === currentUserEmail || 
@@ -368,11 +504,8 @@ export default function TextEditor() {
         console.log(`Your role changed from ${data.oldRole} to ${newRole}`);
         
         setUserRole(newRole);
-        
-        // CRITICAL: Tell the socket to refresh its cached role
         socket.emit('refresh-role', documentId);
         
-        // Update Quill editor state
         if (quill) {
           if (newRole === "viewer") {
             quill.disable();
@@ -383,7 +516,6 @@ export default function TextEditor() {
           }
         }
         
-        // Refresh collaborators list in the UI
         fetchCollaborators();
       }
     };
@@ -395,20 +527,16 @@ export default function TextEditor() {
     };
   }, [socket, quill, user, documentId, fetchCollaborators]);
 
-  // Listen for general permission updates - NO ALERTS, NO ROLE UPDATES
   useEffect(() => {
     if (!socket) return;
 
     const handlePermissionsUpdate = (data) => {
       console.log('General permissions updated:', data);
       
-      // Only update public/private status
       if (data.isPublic !== undefined) {
         setIsPublicDoc(data.isPublic);
       }
       
-      // Just refresh the collaborators list display
-      // Don't touch role or quill state - that's handled by collaborator-role-changed
       fetchCollaborators();
     };
 
@@ -423,7 +551,13 @@ export default function TextEditor() {
     if (socket == null || quill == null || userRole === 'viewer' || !userRole) return;
 
     const interval = setInterval(() => {
+      setSaveStatus("saving");
       socket.emit("save-document", quill.getContents());
+      setTimeout(() => {
+        setSaveStatus("saved");
+        setLastSaved(new Date().toISOString());
+        setTimeout(() => setSaveStatus(""), 2000);
+      }, 300);
     }, SAVE_INTERVAL_MS);
 
     return () => {
@@ -478,7 +612,6 @@ export default function TextEditor() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Quill Editor Custom Styling with Docsy Brand */
         .ql-toolbar.ql-snow {
           border: none !important;
           background: #F1F3F5 !important;
@@ -552,13 +685,11 @@ export default function TextEditor() {
           border-color: #3A86FF !important;
         }
 
-        /* Title Input Focus Effect */
         .title-input:focus {
           background: rgba(58, 134, 255, 0.05) !important;
           outline: none !important;
         }
         
-        /* Title truncation */
         .title-input {
           overflow: hidden;
           text-overflow: ellipsis;
@@ -566,7 +697,6 @@ export default function TextEditor() {
         }
       `}</style>
 
-      {/* Guest Banner */}
       {!isSignedIn && isPublicDoc && userRole === 'viewer' && (
         <div className="bg-blue-50 border-b border-blue-200 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-blue-800">
@@ -582,11 +712,8 @@ export default function TextEditor() {
         </div>
       )}
 
-      {/* Header Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
-        {/* Left Section - Title & Status */}
         <div className="flex-1 min-w-0 flex flex-col gap-2">
-          {/* Title */}
           <input
             type="text"
             value={title}
@@ -605,11 +732,9 @@ export default function TextEditor() {
             disabled={userRole === "viewer"}
           />
           
-          {/* Status Pills Row */}
-          <div className="flex items-center gap-2 px-3">
+          <div className="flex items-center gap-3 px-3">
             <StatusPill userRole={userRole} isPublic={isPublicDoc} />
             
-            {/* Save Status */}
             {saveStatus === "saving" && (
               <span className="text-xs text-muted-text font-medium flex items-center gap-1.5">
                 <span className="inline-block w-3 h-3 border-2 border-muted-text border-t-transparent rounded-full animate-spin" />
@@ -621,15 +746,26 @@ export default function TextEditor() {
                 <span className="text-sm">✓</span> Saved
               </span>
             )}
+            
+            {!saveStatus && lastSaved && (
+              <span className="text-xs text-muted-text">
+                Last edited {getRelativeTime(lastSaved)}
+              </span>
+            )}
           </div>
         </div>
         
-        {/* Right Section - Collaborators & Share Button */}
         <div className="flex items-center gap-3">
-          {/* Collaborator Avatars */}
-          <CollaboratorAvatars collaborators={collaborators} />
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="p-2 hover:bg-input-field rounded-lg transition-colors group"
+            title="Keyboard shortcuts"
+          >
+            <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink transition-colors" />
+          </button>
           
-          {/* Share Button */}
+          <CollaboratorAvatars collaborators={collaborators} onlineUsers={onlineUsers} />
+          
           <button
             onClick={() => setIsShareModalOpen(true)}
             disabled={userRole === "viewer"}
@@ -641,7 +777,6 @@ export default function TextEditor() {
         </div>
       </div>
 
-      {/* Editor Container */}
       <div className="flex-1 overflow-auto bg-light-bg flex justify-center pt-6 pb-12">
         <div 
           className="w-full max-w-5xl h-fit bg-white shadow-lg rounded-lg mx-6 overflow-hidden" 
@@ -653,13 +788,18 @@ export default function TextEditor() {
         isOpen={isShareModalOpen}
         onClose={() => {
           setIsShareModalOpen(false);
-          fetchCollaborators(); // Refresh collaborators when modal closes
+          fetchCollaborators();
         }}
         documentId={documentId}
         currentPermissions={permissions}
         socket={socket}
         getToken={getToken}
         backendUrl={backendUrl}
+      />
+      
+      <KeyboardShortcutsTooltip 
+        isOpen={showShortcuts} 
+        onClose={() => setShowShortcuts(false)} 
       />
     </div>
   );

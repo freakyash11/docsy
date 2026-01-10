@@ -7,6 +7,10 @@ import { Redis } from 'ioredis';
 
 const defaultValue = "";
 
+// In-memory store for online users per document
+// Format: { documentId: [{ socketId, userId, mongoUserId, email, name, role }] }
+const documentPresence = new Map();
+
 function setupSocket(server, redis) {
   try {
     console.log('setupSocket called - initializing...');
@@ -44,6 +48,8 @@ function setupSocket(server, redis) {
       const token = socket.handshake.auth.token;
       console.log('Handshake auth token received:', token ? 'Present' : 'Missing');
 
+      let authenticatedUser = null;
+
       // Try to authenticate, but don't disconnect if no token (for public docs)
       if (token) {
         try {
@@ -58,11 +64,16 @@ function setupSocket(server, redis) {
           const user = await User.findOne({ clerkId: socket.userId });
           if (user) {
             socket.mongoUserId = user._id.toString();
+            authenticatedUser = {
+              userId: socket.userId,
+              mongoUserId: socket.mongoUserId,
+              email: user.email,
+              name: user.name
+            };
             console.log('Authenticated user:', socket.userId, 'MongoDB ID:', socket.mongoUserId);
           }
         } catch (error) {
           console.error('Auth failed for socket:', socket.id, 'Error:', error.message);
-          // Don't disconnect - they might be viewing a public document
           console.log('Continuing as guest user');
         }
       } else {
@@ -71,10 +82,33 @@ function setupSocket(server, redis) {
 
       socket.on("disconnect", (reason) => {
         console.log('Disconnected:', socket.id, 'Reason:', reason, 'Transport:', socket.conn.transport.name);
+        
+        // Remove user from presence tracking
+        if (socket.documentId) {
+          const presenceList = documentPresence.get(socket.documentId) || [];
+          const updatedList = presenceList.filter(p => p.socketId !== socket.id);
+          
+          if (updatedList.length === 0) {
+            documentPresence.delete(socket.documentId);
+          } else {
+            documentPresence.set(socket.documentId, updatedList);
+          }
+          
+          // Notify others that user left
+          if (authenticatedUser) {
+            socket.to(socket.documentId).emit("user-left", {
+              email: authenticatedUser.email,
+              userId: authenticatedUser.userId,
+              mongoUserId: authenticatedUser.mongoUserId
+            });
+          }
+          
+          console.log('User removed from presence for document:', socket.documentId);
+        }
       });
 
       socket.on("get-document", async (documentId) => {
-        console.log('get-document event from:', socket.userId);
+        console.log('get-document event from:', socket.userId || 'guest');
         try {
           const document = await findOrCreateDocument(documentId);
           socket.join(documentId);
@@ -115,11 +149,61 @@ function setupSocket(server, redis) {
           socket.userRole = userRole;
           console.log('User role set:', socket.userRole, 'for document:', documentId, 'isPublic:', document.isPublic);
           
+          // Add user to presence tracking
+          if (authenticatedUser) {
+            const presenceList = documentPresence.get(documentId) || [];
+            
+            // Check if user already in list (from different socket)
+            const existingIndex = presenceList.findIndex(
+              p => p.mongoUserId === authenticatedUser.mongoUserId
+            );
+            
+            const presenceData = {
+              socketId: socket.id,
+              userId: authenticatedUser.userId,
+              mongoUserId: authenticatedUser.mongoUserId,
+              email: authenticatedUser.email,
+              name: authenticatedUser.name,
+              role: userRole
+            };
+            
+            if (existingIndex >= 0) {
+              // Update existing presence
+              presenceList[existingIndex] = presenceData;
+            } else {
+              // Add new presence
+              presenceList.push(presenceData);
+            }
+            
+            documentPresence.set(documentId, presenceList);
+            
+            // Notify others that user joined
+            socket.to(documentId).emit("user-joined", {
+              email: authenticatedUser.email,
+              userId: authenticatedUser.userId,
+              mongoUserId: authenticatedUser.mongoUserId,
+              name: authenticatedUser.name,
+              role: userRole
+            });
+            
+            console.log('User added to presence:', authenticatedUser.email, 'Total online:', presenceList.length);
+          }
+          
+          // Get current online users for this document
+          const onlineUsers = (documentPresence.get(documentId) || []).map(p => ({
+            email: p.email,
+            userId: p.userId,
+            mongoUserId: p.mongoUserId,
+            name: p.name,
+            role: p.role
+          }));
+          
           socket.emit("load-document", {
             data: document.data,
             title: document.title || 'Untitled Document',
             role: userRole,
-            isPublic: document.isPublic
+            isPublic: document.isPublic,
+            onlineUsers: onlineUsers
           });
         } catch (error) {
           console.error('Error loading document for user:', socket.userId, error);
@@ -159,6 +243,16 @@ function setupSocket(server, redis) {
           
           socket.userRole = userRole;
           console.log('Role refreshed to:', socket.userRole);
+          
+          // Update presence list with new role
+          if (socket.documentId && authenticatedUser) {
+            const presenceList = documentPresence.get(socket.documentId) || [];
+            const userPresence = presenceList.find(p => p.socketId === socket.id);
+            if (userPresence) {
+              userPresence.role = userRole;
+              documentPresence.set(socket.documentId, presenceList);
+            }
+          }
         } catch (error) {
           console.error('Error refreshing role:', error);
         }
@@ -253,6 +347,12 @@ function setupSocket(server, redis) {
           const user = await User.findOne({ clerkId: socket.userId });
           if (user) {
             socket.mongoUserId = user._id.toString();
+            authenticatedUser = {
+              userId: socket.userId,
+              mongoUserId: socket.mongoUserId,
+              email: user.email,
+              name: user.name
+            };
           }
           
           console.log('Token refreshed for user:', socket.userId);
