@@ -7,7 +7,7 @@ import {
   updateDocument,
   deleteDocument,
 } from '../controllers/documentController.js';
-import { getDocumentCollaborators } from '../controllers/collaboratorController.js';
+import { getDocumentCollaborators } from '../controllers/documentController.js';
 
 const router = express.Router();
 
