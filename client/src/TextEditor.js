@@ -284,11 +284,11 @@ export default function TextEditor() {
     navigate('/auth');
   };
 
-  // Fetch collaborators/invitations
+  // Fetch collaborators from document schema
   const fetchCollaborators = useCallback(async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}`, {
+      const response = await fetch(`${backendUrl}/api/documents/${documentId}/collaborators`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -296,15 +296,16 @@ export default function TextEditor() {
       
       if (response.ok) {
         const data = await response.json();
-        const acceptedCollaborators = (data.invitations || [])
-          .filter(inv => inv.status === 'accepted')
-          .map(inv => ({
-            id: inv.id,
-            email: inv.email,
-            name: inv.name || inv.email.split('@')[0],
-            permission: inv.role
-          }));
-        setCollaborators(acceptedCollaborators);
+        
+        // Map collaborators from document schema
+        const collaboratorsList = (data.collaborators || []).map(collab => ({
+          id: collab.id,
+          email: collab.email,
+          name: collab.name || collab.email.split('@')[0],
+          permission: collab.permission
+        }));
+        
+        setCollaborators(collaboratorsList);
         
         if (data.document) {
           setIsPublicDoc(data.document.isPublic);

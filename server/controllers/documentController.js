@@ -191,6 +191,70 @@ export const getDocument = async (req, res) => {
   }
 };
 
+// NEW: Get collaborators for a document
+export const getDocumentCollaborators = async (req, res) => {
+  try {
+    console.log('getDocumentCollaborators called - documentId:', req.params.id);
+    const { id } = req.params;
+    const userId = req.userId;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid document ID' });
+    }
+    
+    // Find user making the request
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const mongoUserId = user._id;
+
+    // Fetch document with populated collaborators
+    const document = await Document.findById(id)
+      .populate('collaborators.userId', 'name email')
+      .lean();
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check if user has access to view collaborators
+    const isOwner = document.ownerId.toString() === mongoUserId.toString();
+    const isCollaborator = document.collaborators.some(
+      collab => collab.userId?._id?.toString() === mongoUserId.toString()
+    );
+    
+    if (!isOwner && !isCollaborator && !document.isPublic) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Format collaborators data
+    const collaborators = document.collaborators.map(collab => ({
+      id: collab._id,
+      email: collab.email,
+      name: collab.userId?.name || collab.email.split('@')[0],
+      permission: collab.permission,
+      userId: collab.userId?._id
+    }));
+    
+    console.log('Collaborators fetched:', collaborators.length);
+    
+    res.json({
+      document: {
+        id: document._id,
+        title: document.title,
+        isPublic: document.isPublic,
+        updatedAt: document.updatedAt
+      },
+      collaborators: collaborators,
+      isOwner: isOwner
+    });
+  } catch (error) {
+    console.error('Get collaborators error:', error.message, 'Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch collaborators' });
+  }
+};
+
 // Update document (including title)
 export const updateDocument = async (req, res) => {
   try {
