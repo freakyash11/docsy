@@ -795,14 +795,16 @@ export default function TextEditor() {
           
           <CollaboratorAvatars collaborators={collaborators} onlineUsers={onlineUsers} />
           
-          <button
-            onClick={() => setIsShareModalOpen(true)}
-            disabled={userRole === "viewer"}
-            className="px-4 py-2 bg-docsy-blue text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium disabled:bg-cool-grey disabled:cursor-not-allowed shadow-sm"
-          >
-            <Share2 className="w-4 h-4" />
-            Share
-          </button>
+          {/* Only show Share button to owner */}
+          {userRole === 'owner' && (
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="px-4 py-2 bg-docsy-blue text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium shadow-sm"
+            >
+              <Share2 className="w-4 h-4" />
+              Share
+            </button>
+          )}
         </div>
       </div>
 
