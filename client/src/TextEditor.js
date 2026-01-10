@@ -434,6 +434,10 @@ export default function TextEditor() {
       setUserRole(data.role);
       setIsPublicDoc(data.isPublic || false);
       quill.setContents(data.data || []);
+      
+      // Store initial content for comparison
+      lastSavedContent.current = data.data || [];
+      
       if (data.title) {
         setTitle(data.title);
       }
@@ -547,15 +551,36 @@ export default function TextEditor() {
     };
   }, [socket, fetchCollaborators]);
 
+  // Track if document has unsaved changes
+  const hasUnsavedChanges = useRef(false);
+  const lastSavedContent = useRef(null);
+
   useEffect(() => {
     if (socket == null || quill == null || userRole === 'viewer' || !userRole) return;
 
     const interval = setInterval(() => {
+      // Only save if there are actual changes
+      if (!hasUnsavedChanges.current) {
+        return;
+      }
+
+      const currentContent = quill.getContents();
+      
+      // Double-check: compare with last saved content
+      if (lastSavedContent.current && 
+          JSON.stringify(currentContent) === JSON.stringify(lastSavedContent.current)) {
+        hasUnsavedChanges.current = false;
+        return;
+      }
+
       setSaveStatus("saving");
-      socket.emit("save-document", quill.getContents());
+      socket.emit("save-document", currentContent);
+      
       setTimeout(() => {
         setSaveStatus("saved");
         setLastSaved(new Date().toISOString());
+        lastSavedContent.current = currentContent;
+        hasUnsavedChanges.current = false;
         setTimeout(() => setSaveStatus(""), 2000);
       }, 300);
     }, SAVE_INTERVAL_MS);
@@ -583,6 +608,10 @@ export default function TextEditor() {
 
     const handler = (delta, oldDelta, source) => {
       if (source !== "user") return;
+      
+      // Mark that we have unsaved changes
+      hasUnsavedChanges.current = true;
+      
       socket.emit("send-changes", delta);
     };
     quill.on("text-change", handler);
