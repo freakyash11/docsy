@@ -191,25 +191,45 @@ export const getDocument = async (req, res) => {
   }
 };
 
-// NEW: Get collaborators for a document
 export const getDocumentCollaborators = async (req, res) => {
   try {
-    console.log('getDocumentCollaborators called - documentId:', req.params.id);
+    console.log('=== DEBUG INFO START ===');
+    console.log('Full req.userId:', req.userId);
+    console.log('Type of req.userId:', typeof req.userId);
+    console.log('req.user object:', JSON.stringify(req.user, null, 2));
+    console.log('Authorization header:', req.headers.authorization);
+    
     const { id } = req.params;
-    const userId = req.userId;
+    const clerkUserId = req.userId;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid document ID' });
     }
     
+    // Debug: Check what's actually in the database
+    console.log('Searching for user with clerkId:', clerkUserId);
+    const allUsers = await User.find({}).select('clerkId email name').limit(5);
+    console.log('Sample users in DB:', JSON.stringify(allUsers, null, 2));
+    
     // Find user making the request
-    const user = await User.findOne({ clerkId: userId });
+    const user = await User.findOne({ clerkId: clerkUserId });
+    console.log('User found:', user ? 'YES' : 'NO');
+    console.log('=== DEBUG INFO END ===');
+    
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ 
+        error: 'User not found',
+        debug: {
+          searchedClerkId: clerkUserId,
+          typeOfClerkId: typeof clerkUserId,
+          sampleUsersInDb: allUsers.map(u => u.clerkId)
+        }
+      });
     }
+    
     const mongoUserId = user._id;
 
-    // Fetch document with populated collaborators
+    // Rest of your code...
     const document = await Document.findById(id)
       .populate('collaborators.userId', 'name email')
       .lean();
@@ -218,7 +238,6 @@ export const getDocumentCollaborators = async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
     
-    // Check if user has access to view collaborators
     const isOwner = document.ownerId.toString() === mongoUserId.toString();
     const isCollaborator = document.collaborators.some(
       collab => collab.userId?._id?.toString() === mongoUserId.toString()
@@ -228,7 +247,6 @@ export const getDocumentCollaborators = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    // Format collaborators data
     const collaborators = document.collaborators.map(collab => ({
       id: collab._id,
       email: collab.email,
