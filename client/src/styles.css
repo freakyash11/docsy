@@ -33,7 +33,17 @@ body{
     border: none;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
+.logo-img {
+  background-color: transparent !important;
+  background: none !important;
 
+  /* 2. Standard sizing */
+  height: 55px; 
+  width: auto;
+  object-fit: contain;
+
+  mix-blend-mode: multiply; 
+}
 @page{
     margin: 1in;
 }

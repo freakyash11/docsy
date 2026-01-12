@@ -15,6 +15,7 @@ export default function UserProfileHeader() {
           src={logoSrc} 
           alt="Docsy Logo" 
           className="h-16 w-auto object-contain block"
+          class="logo-img"
         />
       </div>
     </div>
