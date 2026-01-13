@@ -6,20 +6,19 @@ export default function UserProfileHeader() {
 
   // Reusable Logo Component with white background container
   const Logo = ({ onClick }) => (
-    <div 
-      className={`flex items-center ${onClick ? 'cursor-pointer' : ''}`}
-      onClick={onClick}
-    >
-      <div className="bg-white p-3 rounded-xl inline-block shadow-sm">
-        <img 
-          src={logoSrc} 
-          alt="Docsy Logo" 
-          className="h-16 w-auto object-contain block"
-          class="logo-img"
-        />
-      </div>
-    </div>
-  );
+  <div 
+    className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
+    onClick={onClick}
+  >
+    {/* Removed bg-white, p-3, rounded-xl, and shadow-sm */}
+    <img 
+      src={logoSrc} 
+      alt="Docsy Logo" 
+      /* Increased height slightly since padding is gone, removed redundant 'class' attribute */
+      className="h-12 w-auto object-contain block mix-blend-multiply" 
+    />
+  </div>
+);
 
   // State: Not Signed In
   if (!isSignedIn) {
