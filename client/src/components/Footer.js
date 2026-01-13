@@ -1,5 +1,5 @@
 const Footer = () => {
-  const logoSrc = '/logo.png';
+  const logoSrc = '/Footer_Logo.png';
 
   return (
     <footer className="bg-[#2D2D2D] text-white py-12">
