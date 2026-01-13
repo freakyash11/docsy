@@ -1,54 +1,22 @@
 const Footer = () => {
-  const logoSrc = '/logo.png';
+  const logoSrc = '/Footer_Logo.png';
 
   return (
     <footer className="bg-[#2D2D2D] text-white py-12">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
-          {/* Brand Column */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-white p-3 rounded-xl inline-block shadow-sm">
+       {/* Brand Column */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center p-1">
                 <img 
                   src={logoSrc} 
                   alt="Docsy Logo" 
-                  className="h-14 w-auto object-contain block" 
+                  className="h-14 w-auto object-contain block mix-blend-screen" 
                 />
-              </div>
-            </div>
-            <p className="text-[#ADB5BD] text-sm">Docs without the bulk. Write better together.</p>
-          </div>
-
-          {/* Links Columns */}
-          <div>
-            <h4 className="font-semibold mb-4">Product</h4>
-            <ul className="space-y-2 text-[#ADB5BD] text-sm">
-              <li><a href="#features" className="hover:text-white transition">Features</a></li>
-              <li><a href="#" className="hover:text-white transition">Pricing</a></li>
-              <li><a href="#" className="hover:text-white transition">Updates</a></li>
-              <li><a href="#" className="hover:text-white transition">Demo</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-2 text-[#ADB5BD] text-sm">
-              <li><a href="#" className="hover:text-white transition">About</a></li>
-              <li><a href="#" className="hover:text-white transition">Blog</a></li>
-              <li><a href="#" className="hover:text-white transition">Careers</a></li>
-              <li><a href="#" className="hover:text-white transition">Contact</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4">Legal</h4>
-            <ul className="space-y-2 text-[#ADB5BD] text-sm">
-              <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition">Cookie Policy</a></li>
-            </ul>
           </div>
         </div>
+      <p className="text-[#ADB5BD] text-sm">Docs without the bulk. Write better together.</p>
+      </div>
 
         {/* Bottom Bar */}
         <div className="border-t border-[#ADB5BD]/20 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
