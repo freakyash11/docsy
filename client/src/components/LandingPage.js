@@ -122,6 +122,14 @@ const DocsyLanding = () => {
               desc="Never lose your work. Everything saves automatically and syncs across all devices."
               color="yellow"
             />
+            <FeatureCard 
+    icon={<svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>} 
+    title="Easy Sharing" desc="Share with a simple link." color="blue" 
+  />
+  <FeatureCard 
+    icon={<svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} 
+    title="Distraction-Free" desc="Focus on your words." color="green" 
+  />
           </div>
         </div>
       </section>
@@ -159,6 +167,30 @@ const DocsyLanding = () => {
         </div>
       </section>
 
+      <section id="why" className="py-24 bg-[#f8f9fa] border-y border-gray-100">
+  <div className="max-w-7xl mx-auto px-6">
+    <div className="text-center mb-16">
+      <h2 className="text-4xl font-black mb-4">Why choose Docsy?</h2>
+      <p className="text-gray-500">The power you need. The simplicity you want.</p>
+    </div>
+    <div className="grid md:grid-cols-2 gap-8">
+      {[
+        { title: "No Clutter", desc: "Unlike bloated alternatives, Docsy gives you only what matters.", icon: "✨" },
+        { title: "Less Memory Usage", desc: "Optimized for performance. Work on multiple docs without lag.", icon: "🚀" },
+        { title: "Faster Load Times", desc: "Open documents in milliseconds, not seconds.", icon: "⚡" },
+        { title: "Focused Environment", desc: "A minimal UI designed to help you stay in the zone.", icon: "🧘" }
+      ].map((item) => (
+        <div key={item.title} className="flex gap-4 p-6 bg-white rounded-2xl border border-gray-100">
+          <span className="text-2xl">{item.icon}</span>
+          <div>
+            <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+            <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
       {/* 4. Pricing Section */}
       <section id="pricing" className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
@@ -173,7 +205,29 @@ const DocsyLanding = () => {
           </div>
         </div>
       </section>
-
+       
+      <section id="testimonials" className="py-24 px-6 bg-white">
+  <div className="max-w-7xl mx-auto">
+    <div className="text-center mb-16">
+      <h2 className="text-4xl font-black mb-4">Loved by creators</h2>
+      <p className="text-gray-500 text-lg">See why students and teams are switching to Docsy.</p>
+    </div>
+    <div className="grid md:grid-cols-3 gap-8">
+      <TestimonialCard 
+        quote="Docsy is so fast and simple—we can finally focus on writing instead of fighting with software."
+        author="Emma Stevens" role="Content Team Lead" initials="ES"
+      />
+      <TestimonialCard 
+        quote="As a student, I needed something lightweight. My laptop doesn't sound like a jet engine anymore!"
+        author="Marcus Chen" role="CS Student" initials="MC"
+      />
+      <TestimonialCard 
+        quote="Docsy gives me the clean, distraction-free environment I need without sacrificing features."
+        author="Rachel Porter" role="Freelance Writer" initials="RP"
+      />
+    </div>
+  </div>
+</section>
       {/* 5. CTA Section */}
       <section className="py-20 px-6 bg-gradient-to-br from-[#3A86FF] to-[#6EEB83] text-white text-center">
         <div className="max-w-3xl mx-auto space-y-8">
@@ -229,6 +283,18 @@ const PriceCard = ({ plan, price, features, highlight }) => (
   </div>
 );
 
+const TestimonialCard = ({ quote, author, role, initials }) => (
+  <div className="p-8 rounded-2xl bg-[#f8f9fa] border border-gray-100">
+    <p className="text-[#2D2D2D] italic mb-6 leading-relaxed">"{quote}"</p>
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-[#3A86FF] text-white flex items-center justify-center font-bold text-xs">{initials}</div>
+      <div>
+        <p className="font-bold text-sm">{author}</p>
+        <p className="text-xs text-gray-500">{role}</p>
+      </div>
+    </div>
+  </div>
+);
 // Icons
 const CollaborationIcon = () => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 const FastIcon = () => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
