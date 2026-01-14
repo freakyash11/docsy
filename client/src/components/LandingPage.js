@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 const DocsyLanding = () => {
   const navigate = useNavigate();
-  const logoSrc = '/logo.png'; 
 
+  // Handle smooth scrolling for anchor links (e.g. clicking "Features" in your layout header)
   useEffect(() => {
     const handleScroll = (e) => {
       const href = e.currentTarget.getAttribute('href');
@@ -17,78 +17,99 @@ const DocsyLanding = () => {
       }
     };
 
+    // Attach listener to any anchor links inside this component (if any)
+    // or rely on the Layout's header to trigger the scroll via ID presence.
     const links = document.querySelectorAll('a[href^="#"]');
     links.forEach(link => link.addEventListener('click', handleScroll));
-    return () => links.forEach(link => link.removeEventListener('click', handleScroll));
+
+    return () => {
+      links.forEach(link => link.removeEventListener('click', handleScroll));
+    };
   }, []);
 
-  const handleTryDemo = () => navigate('/demo');
+  // Handler for Try Demo button
+  const handleTryDemo = () => {
+    navigate('/demo');
+  };
 
   return (
-    <div className="font-sans bg-white text-[#2D2D2D] selection:bg-[#3A86FF]/20">
+    <div className="font-sans bg-white text-[#2D2D2D]">
       
-      {/* 1. Hero Section */}
-      <section className="pt-32 pb-20 px-6 bg-[#f8f9fa]">
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3A86FF]/10 rounded-full text-sm font-semibold text-[#3A86FF]">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3A86FF] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3A86FF]"></span>
-                </span>
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <div className="inline-block px-4 py-2 bg-[#F7F9FC] rounded-full text-sm font-medium text-[#3A86FF] mb-4">
                 ✨ Simple. Fast. Collaborative.
               </div>
-              <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl font-bold leading-tight">
                 Create.<br />
                 Collaborate.<br />
                 <span className="text-[#3A86FF]">Share.</span>
               </h1>
-              <p className="text-xl text-[#6C757D] max-w-lg leading-relaxed">
-                Docsy is a lightweight, real-time collaborative word processor designed for seamless teamwork. **Docs without the bulk.**
+              <p className="text-xl text-[#6C757D] leading-relaxed">
+                Docsy is a lightweight, real-time collaborative word processor designed for seamless teamwork. Docs without the bulk.
               </p>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <a href="/auth" className="px-10 py-4 bg-[#3A86FF] text-white rounded-xl font-bold hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/20 active:scale-95">
-                  Start Writing
+              <div className="flex gap-4 pt-4">
+                <a href="/auth" className="inline-block px-8 py-4 bg-[#3A86FF] text-white rounded-xl font-semibold hover:bg-blue-600 transition shadow-lg shadow-[#3A86FF]/30 text-center no-underline">
+                    Start Writing
                 </a>
                 <button 
                   onClick={handleTryDemo}
-                  className="px-10 py-4 bg-white border-2 border-[#D6D6D6] text-[#2D2D2D] rounded-xl font-bold hover:border-[#2D2D2D] transition-all active:scale-95"
+                  className="px-8 py-4 bg-white border-2 border-[#2D2D2D] text-[#2D2D2D] rounded-xl font-semibold hover:bg-[#F7F9FC] transition"
                 >
                   Try Demo
                 </button>
               </div>
+              <div className="flex items-center gap-6 pt-6 text-sm text-[#6C757D]">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-[#6EEB83]" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>No credit card required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-[#6EEB83]" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Free forever</span>
+                </div>
+              </div>
             </div>
 
-            {/* Hero UI Mockup */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-[#3A86FF] to-[#6EEB83] rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-              <div className="relative bg-white rounded-2xl shadow-2xl p-2 border border-[#D6D6D6]">
-                <div className="bg-[#f8f9fa] rounded-t-xl px-4 py-3 border-b flex items-center justify-between">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-[#FF595E]"></div>
-                    <div className="w-3 h-3 rounded-full bg-[#FFBE0B]"></div>
-                    <div className="w-3 h-3 rounded-full bg-[#6EEB83]"></div>
-                  </div>
-                  <div className="flex -space-x-2">
-                    <div className="w-7 h-7 rounded-full bg-[#3A86FF] border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">JD</div>
-                    <div className="w-7 h-7 rounded-full bg-[#6EEB83] border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">AS</div>
-                  </div>
+            {/* Editor Mockup */}
+            <div className="relative">
+              <div className="bg-[#F7F9FC] rounded-2xl shadow-2xl p-6 border border-[#D6D6D6]">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-3 h-3 rounded-full bg-[#FF595E]"></div>
+                  <div className="w-3 h-3 rounded-full bg-[#FFBE0B]"></div>
+                  <div className="w-3 h-3 rounded-full bg-[#6EEB83]"></div>
                 </div>
-                <div className="p-8 space-y-4">
-                  <div className="h-8 w-48 bg-gray-100 rounded-md mb-8 flex items-center px-2">
-                    <img src={logoSrc} className="h-5 mix-blend-multiply opacity-50" alt="logo" />
-                  </div>
-                  <div className="h-4 bg-gray-900 rounded-full w-3/4"></div>
-                  <div className="h-3 bg-gray-200 rounded-full w-full"></div>
-                  <div className="h-3 bg-gray-200 rounded-full w-5/6"></div>
-                  <div className="py-4">
-                    <div className="h-24 bg-[#3A86FF]/5 border-l-4 border-[#3A86FF] rounded-r-md p-4">
-                      <div className="h-2 w-20 bg-[#3A86FF]/40 rounded mb-2"></div>
-                      <div className="h-2 w-full bg-gray-200 rounded"></div>
+                <div className="bg-white rounded-lg p-6 space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#3A86FF] flex items-center justify-center text-white text-sm font-semibold">M</div>
+                      <div className="w-8 h-8 rounded-full bg-[#6EEB83] flex items-center justify-center text-white text-sm font-semibold">A</div>
+                      <div className="w-8 h-8 rounded-full bg-[#FFBE0B] flex items-center justify-center text-white text-sm font-semibold">S</div>
+                    </div>
+                    <div className="px-3 py-1 bg-[#6EEB83]/20 text-[#6EEB83] rounded-full text-xs font-medium">
+                      3 collaborators
                     </div>
                   </div>
-                  <div className="h-3 bg-gray-200 rounded-full w-full"></div>
+                  <div className="h-3 bg-[#2D2D2D] rounded w-3/4"></div>
+                  <div className="h-3 bg-[#ADB5BD]/30 rounded w-full"></div>
+                  <div className="h-3 bg-[#ADB5BD]/30 rounded w-5/6"></div>
+                  <div className="h-3 bg-[#ADB5BD]/30 rounded w-4/5"></div>
+                  <div className="h-20 bg-[#3A86FF]/10 rounded-lg border-2 border-[#3A86FF]/30"></div>
+                  <div className="h-3 bg-[#ADB5BD]/30 rounded w-full"></div>
+                  <div className="h-3 bg-[#ADB5BD]/30 rounded w-3/4"></div>
+                </div>
+              </div>
+              <div className="absolute -bottom-4 -right-4 bg-white rounded-xl shadow-xl p-4 border border-[#D6D6D6]">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-[#6EEB83] animate-pulse"></div>
+                  <span className="font-medium">Autosaving...</span>
                 </div>
               </div>
             </div>
@@ -96,208 +117,303 @@ const DocsyLanding = () => {
         </div>
       </section>
 
-      {/* 2. Features Section */}
-      <section id="features" className="py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black">Everything you need.<br /><span className="text-gray-400">Nothing you don't.</span></h2>
-            <p className="text-lg text-[#6C757D]">Built for productivity. Designed for speed.</p>
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-[#F7F9FC]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">Everything you need.<br />Nothing you don't.</h2>
+            <p className="text-xl text-[#6C757D]">Built for productivity. Designed for simplicity.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard 
-              icon={<CollaborationIcon />} 
-              title="Real-time Collaboration" 
-              desc="See changes as they happen. Edit together with your team in perfect sync."
-              color="blue"
-            />
-            <FeatureCard 
-              icon={<FastIcon />} 
-              title="Lightning Fast" 
-              desc="Open documents in milliseconds. Optimized for instant load times and zero lag."
-              color="green"
-            />
-            <FeatureCard 
-              icon={<CloudIcon />} 
-              title="Autosave & Cloud Sync" 
-              desc="Never lose your work. Everything saves automatically and syncs across all devices."
-              color="yellow"
-            />
-            <FeatureCard 
-    icon={<svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>} 
-    title="Easy Sharing" desc="Share with a simple link." color="blue" 
-  />
-  <FeatureCard 
-    icon={<svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} 
-    title="Distraction-Free" desc="Focus on your words." color="green" 
-  />
-          </div>
-        </div>
-      </section>
 
-      {/* 3. Collaboration Showcase */}
-      <section className="py-24 bg-[#2D2D2D] text-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-          <div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">Built for teamwork</h2>
-            <p className="text-[#ADB5BD] text-lg mb-8">
-              Watch your ideas come to life together. User cursors, smart comments, and live status bubbles keep everyone aligned without the friction.
-            </p>
-            <ul className="space-y-4">
-              {['Live Cursors', 'Threaded Comments', 'Version History'].map(item => (
-                <li key={item} className="flex items-center gap-3">
-                  <div className="bg-[#6EEB83] rounded-full p-1"><svg className="w-3 h-3 text-[#2D2D2D]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"/></svg></div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="relative">
-            <div className="bg-white rounded-xl shadow-2xl p-6 text-[#2D2D2D]">
-               <div className="flex items-center gap-2 mb-4 border-b pb-4">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">EDITING</span>
-                  <span className="text-sm font-medium">Q1 Strategy.docx</span>
-               </div>
-               <p className="text-sm leading-relaxed mb-4">The new roadmap focuses on <span className="bg-[#3A86FF] text-white px-1">scalability</span> and user experience...</p>
-               <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-full bg-[#6EEB83] flex items-center justify-center text-xs font-bold">AK</div>
-                 <div className="px-3 py-2 bg-gray-100 rounded-lg text-[10px]">Adding the metrics now!</div>
-               </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#3A86FF]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#3A86FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Real-time Collaboration</h3>
+              <p className="text-[#6C757D] leading-relaxed">See changes as they happen. Edit together with your team in perfect sync, with live cursors and instant updates.</p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#6EEB83]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#6EEB83]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Lightning Fast</h3>
+              <p className="text-[#6C757D] leading-relaxed">Start writing instantly. No loading spinners, no lag. Just pure speed and performance.</p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#FFBE0B]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#FFBE0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Easy Sharing</h3>
+              <p className="text-[#6C757D] leading-relaxed">Share with a link. Control permissions. Collaborate with anyone, anywhere, anytime.</p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#3A86FF]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#3A86FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Auto-save & Cloud Sync</h3>
+              <p className="text-[#6C757D] leading-relaxed">Never lose your work. Everything saves automatically and syncs across all your devices.</p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#6EEB83]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#6EEB83]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Distraction-Free Writing</h3>
+              <p className="text-[#6C757D] leading-relaxed">Clean interface. No clutter. Just you and your words in a peaceful writing environment.</p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition border border-[#D6D6D6]">
+              <div className="w-14 h-14 bg-[#FFBE0B]/10 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-[#FFBE0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Smart Comments</h3>
+              <p className="text-[#6C757D] leading-relaxed">Leave feedback, ask questions, and discuss changes right in the document.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="why" className="py-24 bg-[#f8f9fa] border-y border-gray-100">
-  <div className="max-w-7xl mx-auto px-6">
-    <div className="text-center mb-16">
-      <h2 className="text-4xl font-black mb-4">Why choose Docsy?</h2>
-      <p className="text-gray-500">The power you need. The simplicity you want.</p>
-    </div>
-    <div className="grid md:grid-cols-2 gap-8">
-      {[
-        { title: "No Clutter", desc: "Unlike bloated alternatives, Docsy gives you only what matters.", icon: "✨" },
-        { title: "Less Memory Usage", desc: "Optimized for performance. Work on multiple docs without lag.", icon: "🚀" },
-        { title: "Faster Load Times", desc: "Open documents in milliseconds, not seconds.", icon: "⚡" },
-        { title: "Focused Environment", desc: "A minimal UI designed to help you stay in the zone.", icon: "🧘" }
-      ].map((item) => (
-        <div key={item.title} className="flex gap-4 p-6 bg-white rounded-2xl border border-gray-100">
-          <span className="text-2xl">{item.icon}</span>
-          <div>
-            <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
-      {/* 4. Pricing Section */}
-      <section id="pricing" className="py-32 px-6">
-        <div className="max-w-7xl mx-auto">
+      {/* Collaboration Showcase */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-black mb-4">Simple Pricing</h2>
-            <p className="text-gray-500">Pick a plan that fits your workflow.</p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">Built for teamwork</h2>
+            <p className="text-xl text-[#6C757D]">Watch your ideas come to life together</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <PriceCard plan="Free" price="0" features={['Unlimited Docs', 'Basic Sharing', 'Cloud Sync']} />
-            <PriceCard plan="Pro" price="12" features={['Advanced Collab', 'Version History', 'Custom Branding']} highlight />
-            <PriceCard plan="Team" price="30" features={['Shared Workspaces', 'Admin Analytics', 'Priority Support']} />
+
+          <div className="bg-gradient-to-br from-[#3A86FF]/5 to-[#6EEB83]/5 rounded-3xl p-8 md:p-12 border border-[#D6D6D6]">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-[#F7F9FC] px-6 py-4 border-b border-[#D6D6D6] flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="font-semibold text-[#2D2D2D]">Project Proposal Draft</span>
+                  <div className="flex -space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-[#3A86FF] border-2 border-white flex items-center justify-center text-white text-xs font-semibold">ME</div>
+                    <div className="w-8 h-8 rounded-full bg-[#6EEB83] border-2 border-white flex items-center justify-center text-white text-xs font-semibold">AK</div>
+                    <div className="w-8 h-8 rounded-full bg-[#FFBE0B] border-2 border-white flex items-center justify-center text-white text-xs font-semibold">SJ</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[#6EEB83]">
+                  <div className="w-2 h-2 rounded-full bg-[#6EEB83] animate-pulse"></div>
+                  <span className="font-medium">3 active</span>
+                </div>
+              </div>
+              <div className="p-8 space-y-6">
+                <div className="relative">
+                  <h3 className="text-2xl font-bold mb-2">Executive Summary</h3>
+                  <div className="absolute -left-2 top-0 w-1 h-full bg-[#3A86FF] rounded"></div>
+                </div>
+                <p className="text-[#6C757D] leading-relaxed">
+                  Our proposed solution addresses the growing need for streamlined document collaboration in remote teams...
+                </p>
+                <div className="bg-[#FFBE0B]/10 border-l-4 border-[#FFBE0B] rounded-r-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-[#FFBE0B] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">S</div>
+                    <div>
+                      <p className="font-medium text-sm mb-1">Sarah Johnson</p>
+                      <p className="text-sm text-[#6C757D]">Can we add metrics from Q3 here?</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="relative">
+                  <p className="text-[#6C757D] leading-relaxed">
+                    <span className="bg-[#6EEB83]/20">The platform will reduce collaboration friction by 40%</span> while maintaining enterprise-grade security standards.
+                  </p>
+                  <div className="absolute -right-8 top-0 flex items-center gap-1">
+                    <div className="w-6 h-6 rounded-full bg-[#6EEB83] border-2 border-white"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
-       
-      <section id="testimonials" className="py-24 px-6 bg-white">
-  <div className="max-w-7xl mx-auto">
-    <div className="text-center mb-16">
-      <h2 className="text-4xl font-black mb-4">Loved by creators</h2>
-      <p className="text-gray-500 text-lg">See why students and teams are switching to Docsy.</p>
-    </div>
-    <div className="grid md:grid-cols-3 gap-8">
-      <TestimonialCard 
-        quote="Docsy is so fast and simple—we can finally focus on writing instead of fighting with software."
-        author="Emma Stevens" role="Content Team Lead" initials="ES"
-      />
-      <TestimonialCard 
-        quote="As a student, I needed something lightweight. My laptop doesn't sound like a jet engine anymore!"
-        author="Marcus Chen" role="CS Student" initials="MC"
-      />
-      <TestimonialCard 
-        quote="Docsy gives me the clean, distraction-free environment I need without sacrificing features."
-        author="Rachel Porter" role="Freelance Writer" initials="RP"
-      />
-    </div>
-  </div>
-</section>
-      {/* 5. CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-[#3A86FF] to-[#6EEB83] text-white text-center">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <h2 className="text-4xl md:text-5xl font-black">Ready to write better together?</h2>
-          <p className="text-xl opacity-90">Join thousands of students and teams using Docsy to simplify their workflow.</p>
+
+      {/* Why Docsy Section */}
+      <section id="why" className="py-20 bg-[#F7F9FC]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">Why choose Docsy?</h2>
+            <p className="text-xl text-[#6C757D]">The power you need. The simplicity you want.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D6D6D6]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#3A86FF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#3A86FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">No Clutter</h3>
+                  <p className="text-[#6C757D]">Unlike bloated alternatives, Docsy gives you only what matters. Clean interface, powerful features.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D6D6D6]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#6EEB83]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#6EEB83]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Faster Load Times</h3>
+                  <p className="text-[#6C757D]">Open documents in milliseconds. No more waiting for pages to load.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D6D6D6]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#FFBE0B]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#FFBE0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Minimal Interface</h3>
+                  <p className="text-[#6C757D]">Focus on writing, not navigating menus. Everything you need is one click away.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D6D6D6]">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[#3A86FF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#3A86FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Less Memory Usage</h3>
+                  <p className="text-[#6C757D]">Work on multiple documents without slowing down your computer. Optimized for performance.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12 bg-gradient-to-r from-[#3A86FF] to-[#6EEB83] rounded-2xl p-8 text-white text-center">
+            <h3 className="text-2xl font-bold mb-2">Focused Writing Environment</h3>
+            <p className="text-lg opacity-90">Get in the zone and stay there. Docsy helps you concentrate on what matters: your words.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section id="testimonials" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">Loved by teams everywhere</h2>
+            <p className="text-xl text-[#6C757D]">See what our users have to say</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Testimonial 1 */}
+            <div className="bg-[#F7F9FC] rounded-2xl p-8 border border-[#D6D6D6]">
+              <div className="flex gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <svg key={i} className="w-5 h-5 text-[#FFBE0B]" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-[#2D2D2D] mb-6 leading-relaxed">"Docsy has completely changed how our team collaborates. It's so fast and simple - we can finally focus on writing instead of fighting with software."</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#3A86FF] to-[#6EEB83] flex items-center justify-center text-white font-bold">ES</div>
+                <div>
+                  <p className="font-semibold">Emma Stevens</p>
+                  <p className="text-sm text-[#6C757D]">Content Team Lead</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-[#F7F9FC] rounded-2xl p-8 border border-[#D6D6D6]">
+              <div className="flex gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <svg key={i} className="w-5 h-5 text-[#FFBE0B]" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-[#2D2D2D] mb-6 leading-relaxed">"As a student, I needed something lightweight for group projects. Docsy is perfect - no lag, easy sharing, and my laptop doesn't sound like a jet engine anymore!"</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFBE0B] to-[#FF595E] flex items-center justify-center text-white font-bold">MC</div>
+                <div>
+                  <p className="font-semibold">Marcus Chen</p>
+                  <p className="text-sm text-[#6C757D]">Computer Science Student</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-[#F7F9FC] rounded-2xl p-8 border border-[#D6D6D6]">
+              <div className="flex gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <svg key={i} className="w-5 h-5 text-[#FFBE0B]" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-[#2D2D2D] mb-6 leading-relaxed">"I've been writing professionally for 15 years. Docsy gives me the clean, distraction-free environment I need without sacrificing collaboration features. It's my new go-to."</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#6EEB83] to-[#3A86FF] flex items-center justify-center text-white font-bold">RP</div>
+                <div>
+                  <p className="font-semibold">Rachel Porter</p>
+                  <p className="text-sm text-[#6C757D]">Freelance Writer</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-br from-[#3A86FF] to-[#6EEB83]">
+        <div className="max-w-4xl mx-auto px-6 text-center text-white">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to write better together?</h2>
+          <p className="text-xl mb-8 opacity-90">Join thousands of teams already using Docsy to collaborate seamlessly.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/auth" className="px-12 py-5 bg-white text-[#3A86FF] rounded-xl font-black shadow-2xl hover:bg-gray-50 transition active:scale-95 no-underline">
+            <a href="/auth" className="inline-block px-8 py-4 bg-white text-[#3A86FF] rounded-xl font-semibold hover:bg-gray-50 transition shadow-xl text-center no-underline">
               Get Started Free
             </a>
+            <button 
+              onClick={handleTryDemo}
+              className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition"
+            >
+              Try Demo
+            </button>
           </div>
-          <p className="text-sm opacity-70">No credit card required • Cancel anytime</p>
+          <p className="mt-6 text-sm opacity-75">No credit card required • Free forever • 5-minute setup</p>
         </div>
       </section>
+
     </div>
   );
 };
-
-// Sub-components
-const FeatureCard = ({ icon, title, desc, color }) => {
-  const colors = {
-    blue: "bg-[#3A86FF]/10 text-[#3A86FF]",
-    green: "bg-[#6EEB83]/10 text-[#6EEB83]",
-    yellow: "bg-[#FFBE0B]/10 text-[#FFBE0B]"
-  };
-  return (
-    <div className="p-8 rounded-2xl border border-gray-100 bg-white hover:border-[#3A86FF] hover:shadow-xl transition-all duration-300 group">
-      <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${colors[color]}`}>{icon}</div>
-      <h3 className="text-xl font-bold mb-3">{title}</h3>
-      <p className="text-[#6C757D] leading-relaxed">{desc}</p>
-    </div>
-  );
-};
-
-const PriceCard = ({ plan, price, features, highlight }) => (
-  <div className={`p-10 rounded-3xl border ${highlight ? 'border-[#3A86FF] shadow-2xl scale-105 relative bg-white' : 'border-gray-100 bg-white'}`}>
-    {highlight && <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#3A86FF] text-white px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">Most Popular</span>}
-    <h3 className="text-xl font-bold mb-2">{plan}</h3>
-    <div className="flex items-baseline gap-1 mb-8">
-      <span className="text-5xl font-black">${price}</span>
-      <span className="text-gray-400">/mo</span>
-    </div>
-    <ul className="space-y-4 mb-10">
-      {features.map(f => (
-        <li key={f} className="flex items-center gap-3 text-sm font-medium">
-          <svg className="w-5 h-5 text-[#6EEB83]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
-          {f}
-        </li>
-      ))}
-    </ul>
-    <button className={`w-full py-4 rounded-xl font-bold transition-all ${highlight ? 'bg-[#3A86FF] text-white hover:bg-blue-600' : 'bg-gray-100 text-[#2D2D2D] hover:bg-gray-200'}`}>
-      Choose {plan}
-    </button>
-  </div>
-);
-
-const TestimonialCard = ({ quote, author, role, initials }) => (
-  <div className="p-8 rounded-2xl bg-[#f8f9fa] border border-gray-100">
-    <p className="text-[#2D2D2D] italic mb-6 leading-relaxed">"{quote}"</p>
-    <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#3A86FF] text-white flex items-center justify-center font-bold text-xs">{initials}</div>
-      <div>
-        <p className="font-bold text-sm">{author}</p>
-        <p className="text-xs text-gray-500">{role}</p>
-      </div>
-    </div>
-  </div>
-);
-// Icons
-const CollaborationIcon = () => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
-const FastIcon = () => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
-const CloudIcon = () => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>;
 
 export default DocsyLanding;
