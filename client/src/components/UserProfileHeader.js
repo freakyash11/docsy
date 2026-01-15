@@ -1,65 +1,61 @@
 import { UserButton, useUser } from '@clerk/clerk-react';
+import { useTheme } from '../context/ThemeContext'; // Import context
+import { Sun, Moon } from 'lucide-react'; // Import icons
 
 export default function UserProfileHeader() {
   const { user, isSignedIn } = useUser();
+  const { theme, toggleTheme } = useTheme(); // Consume theme state
   const logoSrc = '/logo.png'; 
 
-  // Reusable Logo Component with white background container
   const Logo = ({ onClick }) => (
-  <div 
-    className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
-    onClick={onClick}
-  >
-    {/* Removed bg-white, p-3, rounded-xl, and shadow-sm */}
-    <img 
-      src={logoSrc} 
-      alt="Docsy Logo" 
-      /* Increased height slightly since padding is gone, removed redundant 'class' attribute */
-      className="h-12 w-auto object-contain block mix-blend-multiply" 
-    />
-  </div>
-);
+    <div 
+      className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
+      <img 
+        src={logoSrc} 
+        alt="Docsy Logo" 
+        className="h-12 w-auto object-contain block dark:invert transition-all duration-300" 
+      />
+    </div>
+  );
 
-  // State: Not Signed In
-  if (!isSignedIn) {
-    return (
-      <div className="flex items-center justify-between px-8 py-3 bg-[#f8f9fa] border-b border-[#e9ecef]">
-        <Logo />
-        <a 
-          href="/auth" 
-          className="text-sm no-underline text-[#3A86FF] font-medium hover:text-blue-600 transition-colors"
-        >
-          Sign In
-        </a>
-      </div>
-    );
-  }
+  const headerClasses = "flex items-center justify-between px-8 py-3 bg-[#f8f9fa] dark:bg-[#1A1A1A] border-b border-[#e9ecef] dark:border-gray-800 transition-colors duration-300";
 
-  // State: Signed In
   return (
-    <div className="flex items-center justify-between px-8 py-3 bg-[#f8f9fa] border-b border-[#e9ecef]">
-      {/* Logo links to dashboard when signed in */}
+    <div className={headerClasses}>
       <Logo onClick={() => window.location.href = '/dashboard'} />
       
       <div className="flex items-center gap-4">
-        <span className="text-sm text-[#666666]">
-          Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}
-        </span>
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-200 text-slate-ink dark:text-cool-grey"
+          aria-label="Toggle Dark Mode"
+        >
+          {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
+        </button>
+
+        {isSignedIn && (
+          <>
+            <span className="text-sm text-[#666666] dark:text-cool-grey hidden sm:block">
+              Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}
+            </span>
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-10 h-10 border border-gray-200 dark:border-gray-700"
+                }
+              }}
+            />
+          </>
+        )}
         
-        <UserButton 
-          appearance={{
-            elements: {
-              avatarBox: "w-10 h-10"
-            }
-          }}
-          userProfileProps={{
-            appearance: {
-              elements: {
-                rootBox: "w-full"
-              }
-            }
-          }}
-        />
+        {!isSignedIn && (
+          <a href="/auth" className="text-sm text-[#3A86FF] font-medium hover:text-blue-600">
+            Sign In
+          </a>
+        )}
       </div>
     </div>
   );

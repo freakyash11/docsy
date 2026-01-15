@@ -6,6 +6,8 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAuth, useUser } from '@clerk/clerk-react'
 import { Share2, Globe, Lock, Users, Crown, Eye, Keyboard } from "lucide-react"
 import ShareModal from "./components/ShareModal"
+import { useTheme } from './context/ThemeContext'; 
+import { Sun, Moon } from "lucide-react";
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
@@ -79,27 +81,25 @@ function KeyboardShortcutsTooltip({ isOpen, onClose }) {
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black bg-opacity-10 z-40"
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 z-40"
         onClick={onClose}
       />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-50 w-full max-w-md">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-[#1A1A1A] rounded-xl shadow-2xl p-6 z-50 w-full max-w-md border dark:border-gray-800">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-ink">Keyboard Shortcuts</h3>
+          <h3 className="text-lg font-semibold text-slate-ink dark:text-white">Keyboard Shortcuts</h3>
           <button
             onClick={onClose}
-            className="text-muted-text hover:text-slate-ink transition-colors"
+            className="text-muted-text hover:text-slate-ink dark:hover:text-white transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
         
         <div className="space-y-2">
           {shortcuts.map((shortcut, index) => (
-            <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-              <span className="text-sm text-slate-ink">{shortcut.action}</span>
-              <kbd className="px-2 py-1 bg-input-field text-muted-text text-xs rounded font-mono">
+            <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+              <span className="text-sm text-slate-ink dark:text-gray-300">{shortcut.action}</span>
+              <kbd className="px-2 py-1 bg-input-field dark:bg-gray-800 text-muted-text dark:text-cool-grey text-xs rounded font-mono border dark:border-gray-700">
                 {shortcut.keys}
               </kbd>
             </div>
@@ -124,27 +124,25 @@ function CollaboratorAvatar({ collaborator, index, isOnline = false }) {
     >
       <div className="relative">
         <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white ring-2 ring-white cursor-pointer hover:scale-110 transition-transform"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white ring-2 ring-white dark:ring-[#1A1A1A] cursor-pointer hover:scale-110 transition-transform"
           style={{ backgroundColor: color }}
         >
           {initials}
         </div>
-        
-        {/* Presence indicator */}
         <div 
-          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#1A1A1A] ${
             isOnline ? 'bg-soft-green' : 'bg-cool-grey'
           }`}
         />
       </div>
       
       {showTooltip && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-slate-ink text-white px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg z-50">
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-slate-ink dark:bg-gray-800 text-white px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg z-50 border dark:border-gray-700">
           <div>{collaborator.name || collaborator.email}</div>
           <div className="text-gray-300 capitalize">
             {isOnline ? `${collaborator.permission === 'editor' ? 'Editing' : 'Viewing'}` : 'Offline'}
           </div>
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-ink rotate-45"></div>
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-ink dark:bg-gray-800 rotate-45 border-l border-t dark:border-gray-700"></div>
         </div>
       )}
     </div>
@@ -192,8 +190,8 @@ function StatusPill({ userRole, isPublic }) {
       return {
         icon: Crown,
         label: 'Owner',
-        bgColor: 'bg-green-50',
-        textColor: 'text-soft-green',
+        bgColor: 'bg-green-50 dark:bg-green-900/20',
+        textColor: 'text-soft-green dark:text-green-400',
         iconColor: 'text-soft-green'
       }
     }
@@ -201,8 +199,8 @@ function StatusPill({ userRole, isPublic }) {
       return {
         icon: Eye,
         label: 'View only',
-        bgColor: 'bg-gray-100',
-        textColor: 'text-muted-text',
+        bgColor: 'bg-gray-100 dark:bg-gray-800',
+        textColor: 'text-muted-text dark:text-cool-grey',
         iconColor: 'text-muted-text'
       }
     }
@@ -210,8 +208,8 @@ function StatusPill({ userRole, isPublic }) {
       return {
         icon: Users,
         label: 'Editor',
-        bgColor: 'bg-blue-50',
-        textColor: 'text-docsy-blue',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+        textColor: 'text-docsy-blue dark:text-blue-400',
         iconColor: 'text-docsy-blue'
       }
     }
@@ -233,20 +231,9 @@ function StatusPill({ userRole, isPublic }) {
       </div>
       
       {isPublic && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-full">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full">
           <Globe className="w-3.5 h-3.5 text-docsy-blue" />
-          <span className="text-xs font-medium text-docsy-blue">
-            Public
-          </span>
-        </div>
-      )}
-      
-      {!isPublic && userRole === 'owner' && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-full">
-          <Lock className="w-3.5 h-3.5 text-muted-text" />
-          <span className="text-xs font-medium text-muted-text">
-            Private
-          </span>
+          <span className="text-xs font-medium text-docsy-blue dark:text-blue-400">Public</span>
         </div>
       )}
     </div>
@@ -277,6 +264,7 @@ export default function TextEditor() {
   const [collaborators, setCollaborators] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -637,16 +625,15 @@ export default function TextEditor() {
     setQuill(q);
   }, []);
 
-  return (
-    <div className="h-screen flex flex-col bg-light-bg font-['Inter']">
+ return (
+    <div className="h-screen flex flex-col bg-light-bg dark:bg-slate-ink font-['Inter'] transition-colors duration-300">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
+        /* Layout-only styles that apply to both modes */
         .ql-toolbar.ql-snow {
           border: none !important;
-          background: #F1F3F5 !important;
           border-radius: 8px !important;
-          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
           padding: 12px 16px !important;
           margin-bottom: 24px !important;
           font-family: 'Inter', sans-serif !important;
@@ -655,9 +642,6 @@ export default function TextEditor() {
         .ql-container.ql-snow {
           border: none !important;
           font-family: 'Inter', sans-serif !important;
-          font-size: 16px !important;
-          line-height: 1.6 !important;
-          color: #2D2D2D !important;
         }
 
         .ql-editor {
@@ -665,71 +649,32 @@ export default function TextEditor() {
           min-height: 800px !important;
         }
 
-        .ql-editor h1 {
-          font-size: 2.5em !important;
-          font-weight: 700 !important;
-          margin-bottom: 0.5em !important;
-          color: #2D2D2D !important;
+        /* Dark Mode CSS Overrides for Quill */
+        .dark .ql-toolbar.ql-snow {
+          background-color: #2D2D2D !important;
+          border-color: #404040 !important;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
         }
 
-        .ql-editor h2 {
-          font-size: 2em !important;
-          font-weight: 600 !important;
-          margin-top: 1em !important;
-          margin-bottom: 0.5em !important;
+        .dark .ql-snow .ql-stroke { stroke: #ADB5BD !important; }
+        .dark .ql-snow .ql-fill { fill: #ADB5BD !important; }
+        .dark .ql-snow .ql-picker { color: #ADB5BD !important; }
+
+        .dark .ql-editor {
+          color: #E9ECEF !important;
+          caret-color: #3A86FF !important;
         }
 
-        .ql-editor h3 {
-          font-size: 1.5em !important;
-          font-weight: 600 !important;
-        }
-
-        .ql-editor p {
-          margin-bottom: 1em !important;
-        }
-
-        .ql-snow .ql-stroke {
-          stroke: #6C757D !important;
-        }
-
-        .ql-snow .ql-fill {
-          fill: #6C757D !important;
-        }
-
-        .ql-snow .ql-picker-label {
+        .dark .ql-editor.ql-blank::before {
           color: #6C757D !important;
-        }
-
-        .ql-toolbar button:hover,
-        .ql-toolbar button:focus {
-          background: rgba(58, 134, 255, 0.1) !important;
-          border-radius: 4px !important;
-        }
-
-        .ql-toolbar button.ql-active {
-          background: rgba(58, 134, 255, 0.15) !important;
-          border-radius: 4px !important;
-        }
-
-        .ql-snow .ql-picker.ql-expanded .ql-picker-label {
-          border-color: #3A86FF !important;
-        }
-
-        .title-input:focus {
-          background: rgba(58, 134, 255, 0.05) !important;
-          outline: none !important;
-        }
-        
-        .title-input {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          font-style: italic;
         }
       `}</style>
 
+      {/* Guest Banner */}
       {!isSignedIn && isPublicDoc && userRole === 'viewer' && (
-        <div className="bg-blue-50 border-b border-blue-200 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-blue-800">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
             <Globe className="w-4 h-4" />
             <span className="font-medium">You're viewing this document as a guest.</span>
           </div>
@@ -742,7 +687,8 @@ export default function TextEditor() {
         </div>
       )}
 
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
+      {/* Editor Header */}
+      <div className="bg-white dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between gap-4 transition-colors">
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           <input
             type="text"
@@ -750,13 +696,8 @@ export default function TextEditor() {
             onChange={handleTitleChange}
             onFocus={() => setIsEditingTitle(true)}
             onBlur={handleTitleBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.target.blur();
-              }
-            }}
-            className={`title-input text-xl font-semibold text-slate-ink border-none px-3 py-1 rounded-md transition-all ${
-              isEditingTitle ? 'bg-input-field' : 'bg-transparent hover:bg-gray-50'
+            className={`title-input text-xl font-semibold text-slate-ink dark:text-white border-none px-3 py-1 rounded-md transition-all ${
+              isEditingTitle ? 'bg-input-field dark:bg-gray-800' : 'bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50'
             }`}
             placeholder="Untitled Document"
             disabled={userRole === "viewer"}
@@ -764,39 +705,38 @@ export default function TextEditor() {
           
           <div className="flex items-center gap-3 px-3">
             <StatusPill userRole={userRole} isPublic={isPublicDoc} />
-            
-            {saveStatus === "saving" && (
-              <span className="text-xs text-muted-text font-medium flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 border-2 border-muted-text border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="text-xs text-soft-green font-medium flex items-center gap-1">
-                <span className="text-sm">✓</span> Saved
-              </span>
-            )}
-            
             {!saveStatus && lastSaved && (
-              <span className="text-xs text-muted-text">
+              <span className="text-xs text-muted-text dark:text-cool-grey">
                 Last edited {getRelativeTime(lastSaved)}
               </span>
             )}
+            {saveStatus === "saving" && <span className="text-xs text-muted-text animate-pulse">Saving...</span>}
+            {saveStatus === "saved" && <span className="text-xs text-soft-green">✓ Saved</span>}
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-all duration-200 group"
+            title={theme === 'light' ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          >
+            {theme === 'light' ? 
+              <Moon className="w-5 h-5 text-muted-text group-hover:text-slate-ink" /> : 
+              <Sun className="w-5 h-5 text-sun-yellow" />
+            }
+          </button>
+
           <button
             onClick={() => setShowShortcuts(true)}
-            className="p-2 hover:bg-input-field rounded-lg transition-colors group"
-            title="Keyboard shortcuts"
+            className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
           >
-            <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink transition-colors" />
+            <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink dark:group-hover:text-white" />
           </button>
           
           <CollaboratorAvatars collaborators={collaborators} onlineUsers={onlineUsers} />
           
-          {/* Only show Share button to owner */}
           {userRole === 'owner' && (
             <button
               onClick={() => setIsShareModalOpen(true)}
@@ -809,9 +749,10 @@ export default function TextEditor() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-light-bg flex justify-center pt-6 pb-12">
+      {/* Editor Body */}
+      <div className="flex-1 overflow-auto bg-light-bg dark:bg-[#121212] flex justify-center pt-6 pb-12 transition-colors">
         <div 
-          className="w-full max-w-5xl h-fit bg-white shadow-lg rounded-lg mx-6 overflow-hidden" 
+          className="w-full max-w-5xl h-fit bg-white dark:bg-[#1E1E1E] shadow-lg dark:shadow-none rounded-lg mx-6 overflow-hidden border dark:border-gray-800" 
           ref={wrapperRef}
         ></div>
       </div>
@@ -823,7 +764,6 @@ export default function TextEditor() {
           fetchCollaborators();
         }}
         documentId={documentId}
-        currentPermissions={permissions}
         socket={socket}
         getToken={getToken}
         backendUrl={backendUrl}

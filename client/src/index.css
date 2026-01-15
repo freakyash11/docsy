@@ -2,3 +2,77 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.dark .ql-toolbar.ql-snow {
+  background-color: #2D2D2D !important;
+  border-color: #404040 !important;
+  border-bottom: 1px solid #404040 !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Toolbar Icons and Text */
+.dark .ql-snow .ql-stroke {
+  stroke: #ADB5BD !important;
+}
+
+.dark .ql-snow .ql-fill {
+  fill: #ADB5BD !important;
+}
+
+.dark .ql-snow .ql-picker {
+  color: #ADB5BD !important;
+}
+
+.dark .ql-snow .ql-picker-options {
+  background-color: #1E1E1E !important;
+  border-color: #404040 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Editor Container and Canvas */
+.dark .ql-container.ql-snow {
+  border: none !important;
+  background-color: #1E1E1E !important; /* Matches the 'paper' card color */
+}
+
+.dark .ql-editor {
+  color: #E9ECEF !important; /* Light text color */
+  caret-color: #3A86FF !important; /* Blue cursor to match branding */
+}
+
+/* Placeholder Visibility */
+.dark .ql-editor.ql-blank::before {
+  color: #6C757D !important;
+  font-style: italic;
+}
+
+/* Text Selection Highlight */
+.dark .ql-editor ::selection {
+  background-color: rgba(58, 134, 255, 0.3) !important;
+  color: white !important;
+}
+
+/* Heading Colors within Editor */
+.dark .ql-editor h1, 
+.dark .ql-editor h2, 
+.dark .ql-editor h3 {
+  color: #FFFFFF !important;
+}
+
+/* Toolbar Hover and Active States */
+.dark .ql-snow.ql-toolbar button:hover,
+.dark .ql-snow.ql-toolbar button:focus,
+.dark .ql-snow.ql-toolbar button.ql-active,
+.dark .ql-snow.ql-toolbar .ql-picker-label:hover,
+.dark .ql-snow.ql-toolbar .ql-picker-label.ql-active {
+  color: #3A86FF !important;
+  background-color: rgba(58, 134, 255, 0.15) !important;
+}
+
+.dark .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+  stroke: #3A86FF !important;
+}
+
+.dark .ql-snow.ql-toolbar button.ql-active .ql-fill {
+  fill: #3A86FF !important;
+}
