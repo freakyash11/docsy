@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
   const { getToken } = useAuth();
@@ -193,7 +194,9 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-8 py-12">
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-white/20 border-t-docsy-blue"></div>
+            <div className="relative inline-block">
+               <Loader2 className="h-12 w-12 animate-spin text-docsy-blue" />
+            </div>
             <p className="mt-4 text-base text-muted-text dark:text-cool-grey font-medium">
               Loading your documents...
             </p>
