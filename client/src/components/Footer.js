@@ -2,8 +2,8 @@ const Footer = () => {
   const logoSrc = '/Footer_Logo.png';
 
   return (
-    <footer className="bg-[#2D2D2D] text-white py-12">
-      <div className="max-w-7xl mx-auto px-6">
+    <footer className="bg-white dark:bg-[#151515] border-t border-gray-200 dark:border-gray-800 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-8 py-12">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           {/* Brand Column */}
           {/* Brand Column */}
