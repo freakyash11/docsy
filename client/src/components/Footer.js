@@ -24,7 +24,7 @@ const Footer = () => {
 
           {/* Links Columns */}
           <div>
-            <h4 className="font-semibold mb-4">Product</h4>
+            <h4 className="font-semibold mb-4 text-white">Product</h4>
             <ul className="space-y-2 text-[#ADB5BD] text-sm">
               <li><a href="#features" className="hover:text-white transition">Features</a></li>
               <li><a href="#" className="hover:text-white transition">Pricing</a></li>
@@ -34,7 +34,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Company</h4>
+            <h4 className="font-semibold mb-4 text-white">Company</h4>
             <ul className="space-y-2 text-[#ADB5BD] text-sm">
               <li><a href="#" className="hover:text-white transition">About</a></li>
               <li><a href="#" className="hover:text-white transition">Blog</a></li>
@@ -44,7 +44,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Legal</h4>
+            <h4 className="font-semibold mb-4 text-white">Legal</h4>
             <ul className="space-y-2 text-[#ADB5BD] text-sm">
               <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
               <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
@@ -55,7 +55,7 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="border-t border-[#ADB5BD]/20 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-[#ADB5BD] text-sm">© 2024 Docsy. All rights reserved.</p>
+          <p className="text-[#ADB5BD] text-sm">© 2025 Docsy. All rights reserved.</p>
           <div className="flex gap-6">
             {/* Social Icons */}
             <a href="#" className="text-[#ADB5BD] hover:text-white transition">

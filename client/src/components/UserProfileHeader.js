@@ -8,18 +8,17 @@ export default function UserProfileHeader() {
   const logoSrc = '/logo.png'; 
 
   const Logo = ({ onClick }) => (
-  <div 
-    className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
-    onClick={onClick}
-  >
-    <img 
-      src={logoSrc} 
-      alt="Docsy Logo" 
-      /* Removed dark:invert and mix-blend-multiply to preserve original colors */
-      className="h-12 w-auto object-contain block transition-all duration-300" 
-    />
-  </div>
-);
+    <div 
+      className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
+      <img 
+        src={logoSrc} 
+        alt="Docsy Logo" 
+        className="h-12 w-auto object-contain block dark:invert transition-all duration-300" 
+      />
+    </div>
+  );
 
   const headerClasses = "flex items-center justify-between px-8 py-3 bg-[#f8f9fa] dark:bg-[#1A1A1A] border-b border-[#e9ecef] dark:border-gray-800 transition-colors duration-300";
 
