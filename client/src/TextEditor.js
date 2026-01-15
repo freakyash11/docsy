@@ -7,7 +7,7 @@ import { useAuth, useUser } from '@clerk/clerk-react'
 import { Share2, Globe, Lock, Users, Crown, Eye, Keyboard } from "lucide-react"
 import ShareModal from "./components/ShareModal"
 import { useTheme } from './context/ThemeContext'; 
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, X } from "lucide-react";
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
