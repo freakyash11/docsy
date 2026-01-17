@@ -36,19 +36,13 @@ export default function UserProfileHeader() {
           {effectiveTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
         </button>
 
-        {isSignedIn && (
-          <>
-            <span className="text-sm text-[#666666] dark:text-cool-grey hidden sm:block">
-              Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}
-            </span>
-            <UserButton 
-              appearance={{
-                elements: {
-                  avatarBox: "w-10 h-10 border border-gray-200 dark:border-gray-700"
-                }
-              }}
-            />
-          </>
+        {!isSignedIn && (
+          <a 
+          href="/auth" 
+          className="text-sm text-[#3A86FF] font-medium hover:text-blue-600 transition-colors"
+          >
+          Sign In
+         </a>
         )}
         
         {!isSignedIn && (

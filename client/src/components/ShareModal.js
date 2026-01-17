@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react"
-import { X, Mail, Globe, Lock, UserPlus, Check, Trash2, Link2} from "lucide-react"
+import { X, Mail, Check, Trash2, Link2} from "lucide-react"
 
 export default function ShareModal({ 
   isOpen, 
   onClose, 
   documentId, 
-  currentPermissions,
   socket,
   getToken,
   backendUrl 
@@ -394,101 +393,77 @@ export default function ShareModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-[#1A1A1A] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border dark:border-gray-800 transition-all">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Share Document</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-            <X className="w-5 h-5" />
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div className="bg-white dark:bg-[#1A1A1A] rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border dark:border-gray-800 transition-all">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Share Document</h2>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="px-6 py-4 overflow-y-auto flex-1">
+        {/* Save/Status Message - Uses 'saveStatus' and 'Check' */}
+        {saveStatus && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+            <Check className="w-4 h-4" />
+            <span>{saveStatus}</span>
+          </div>
+        )}
+
+        {/* Error Message - Uses 'error' */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* Copy Link Section - Uses 'handleCopyLink', 'Link2', and 'copySuccess' */}
+        <div className="mb-6">
+          <button
+            onClick={handleCopyLink}
+            className="w-full flex items-center justify-center gap-2 p-3 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {copySuccess ? <Check className="w-4 h-4 text-green-600" /> : <Link2 className="w-4 h-4" />}
+            <span>{copySuccess ? "Copied!" : "Copy Link"}</span>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-4 overflow-y-auto flex-1">
-          {/* General Access Toggle */}
+        {/* Pending Invites - Uses 'pendingInvites', 'handleResendInvite', and 'handleRevokeInvite' */}
+        {pendingInvites.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">General Access</h3>
-            <button
-              onClick={handlePublicToggle}
-              className="w-full flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {isPublic ? <Globe className="w-5 h-5 text-blue-600" /> : <Lock className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-800 dark:text-white">{isPublic ? "Public" : "Private"}</p>
-                  <p className="text-xs text-gray-500 dark:text-cool-grey">{isPublic ? "Anyone with the link can view" : "Only invited people can access"}</p>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Pending</h3>
+            {pendingInvites.map(invite => (
+              <div key={invite.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md mb-2">
+                <span className="text-xs dark:text-gray-300 truncate flex-1">{invite.email}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => handleResendInvite(invite.id)} className="text-blue-600 p-1"><Mail className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleRevokeInvite(invite.id)} className="text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
-              <div className={`w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform mt-0.5 ${isPublic ? 'translate-x-5 ml-0.5' : 'translate-x-0.5'}`} />
-              </div>
-            </button>
+            ))}
           </div>
+        )}
 
-          {/* Invite Section */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Invite People</h3>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-lg text-sm"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                </select>
-              </div>
-              <button onClick={handleAddCollaborator} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm font-medium">
-                <UserPlus className="w-4 h-4" /> Send Invitation
-              </button>
+        {/* Collaborators List - Uses 'handleUpdateRole' */}
+        <div className="space-y-2">
+          {collaborators.map(collab => (
+            <div key={collab.email} className="flex items-center justify-between p-2">
+              <span className="text-sm dark:text-white">{collab.email}</span>
+              <select 
+                value={collab.permission} 
+                onChange={(e) => handleUpdateRole(collab.email, e.target.value)}
+                className="text-xs bg-transparent dark:text-white border dark:border-gray-700 rounded"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+              </select>
             </div>
-          </div>
-
-          {/* Collaborators List */}
-          {collaborators.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">People with access</h3>
-              <div className="space-y-2">
-                {collaborators.map((collaborator, index) => (
-                  <div key={collaborator.email || index} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-50 dark:bg-gray-800/30">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {collaborator.email?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{collaborator.email}</p>
-                        <p className="text-xs text-gray-500 dark:text-cool-grey">{collaborator.permission === 'editor' ? 'Can edit' : 'Can view only'}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => handleRemoveCollaborator(collaborator.email)} className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-            Done
-          </button>
+          ))}
         </div>
       </div>
     </div>
-  )
+  </div>
+);
 }
