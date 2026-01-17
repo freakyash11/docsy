@@ -1,16 +1,18 @@
 import { UserButton, useUser } from '@clerk/clerk-react';
 import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom'; // Use Link for internal routing
 
 export default function UserProfileHeader() {
   const { user, isSignedIn } = useUser();
-  const { effectiveTheme, toggleTheme } = useTheme(); // Use effectiveTheme instead of theme
+  const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const logoSrc = '/logo.png'; 
 
-  const Logo = ({ onClick }) => (
+  const Logo = () => (
     <div 
-      className={`flex items-center p-1 ${onClick ? 'cursor-pointer' : ''}`}
-      onClick={onClick}
+      className="flex items-center p-1 cursor-pointer"
+      onClick={() => navigate('/dashboard')}
     >
       <img 
         src={logoSrc} 
@@ -24,31 +26,33 @@ export default function UserProfileHeader() {
 
   return (
     <div className={headerClasses}>
-      <Logo onClick={() => window.location.href = '/dashboard'} />
+      <Logo />
       
       <div className="flex items-center gap-4">
-        {/* Dark Mode Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-200 text-slate-ink dark:text-cool-grey"
+          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-200"
           aria-label="Toggle Dark Mode"
         >
-          {effectiveTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
+          {theme === 'light' ? <Moon className="w-5 h-5 text-slate-ink" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
         </button>
 
-        {!isSignedIn && (
-          <a 
-          href="/auth" 
-          className="text-sm text-[#3A86FF] font-medium hover:text-blue-600 transition-colors"
+        {isSignedIn ? (
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-[#666666] dark:text-cool-grey hidden sm:block">
+              {/* Reference 'user' here to fix the no-unused-vars error */}
+              Welcome, {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}
+            </span>
+            {/* Reference 'UserButton' here */}
+            <UserButton appearance={{ elements: { avatarBox: "w-10 h-10" } }} />
+          </div>
+        ) : (
+          <Link 
+            to="/auth" 
+            className="text-sm text-[#3A86FF] font-medium hover:text-blue-600 transition-colors"
           >
-          Sign In
-         </a>
-        )}
-        
-        {!isSignedIn && (
-          <a href="/auth" className="text-sm text-[#3A86FF] font-medium hover:text-blue-600">
             Sign In
-          </a>
+          </Link>
         )}
       </div>
     </div>
