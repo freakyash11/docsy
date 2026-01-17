@@ -36,10 +36,17 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-lastSeen: {
-  type: Date,
-  default: Date.now
-}
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  preferences: {
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'system'],
+      default: 'system'
+    }
+  }
 }, {
   timestamps: true
 });

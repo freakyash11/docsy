@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import documentRoutes from './routes/documentRoutes.js';
 import invitationRoutes from './routes/invitationRoutes.js';
 import { emailService } from './services/emailService.js';
+import preferencesRoutes from './routes/preferences.js';
 
 
 const app = express();
@@ -64,6 +65,7 @@ console.log('Socket.IO setup completed');
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/invite', invitationRoutes);
+app.use('/api/preferences', preferencesRoutes);
 // Basic health check route
 app.get('/', (req, res) => {
   res.json({ status: 'Server is running' });

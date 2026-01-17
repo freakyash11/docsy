@@ -1,10 +1,10 @@
 import { UserButton, useUser } from '@clerk/clerk-react';
-import { useTheme } from '../context/ThemeContext'; // Import context
-import { Sun, Moon } from 'lucide-react'; // Import icons
+import { useTheme } from '../context/ThemeContext';
+import { Sun, Moon } from 'lucide-react';
 
 export default function UserProfileHeader() {
   const { user, isSignedIn } = useUser();
-  const { theme, toggleTheme } = useTheme(); // Consume theme state
+  const { effectiveTheme, toggleTheme } = useTheme(); // Use effectiveTheme instead of theme
   const logoSrc = '/logo.png'; 
 
   const Logo = ({ onClick }) => (
@@ -33,7 +33,7 @@ export default function UserProfileHeader() {
           className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-200 text-slate-ink dark:text-cool-grey"
           aria-label="Toggle Dark Mode"
         >
-          {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
+          {effectiveTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-sun-yellow" />}
         </button>
 
         {isSignedIn && (
