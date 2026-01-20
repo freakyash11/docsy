@@ -14,6 +14,7 @@ import Dashboard from './components/Dashboard';
 import InvitePage from './components/InvitePage';
 import DocsyLanding from './components/LandingPage';
 import DemoEditor from "./components/DemoEditor";
+import { ThemeProvider } from "./context/ThemeContext";
 //comment
 // Wrapper component to generate UUID only when the root route is rendered
 // const NewDocumentRedirect = () => {
@@ -23,6 +24,7 @@ import DemoEditor from "./components/DemoEditor";
 function App() {
   return (
     <ClerkProvider publishableKey={process.env.REACT_APP_CLERK_PUBLISHABLE_KEY} routing="path">
+    <ThemeProvider>
     <Router>
       <Routes>
         <Route 
@@ -64,6 +66,7 @@ function App() {
           }  />
       </Routes>
     </Router>
+    </ThemeProvider>
     </ClerkProvider>
   );
 }
