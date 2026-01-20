@@ -253,17 +253,11 @@ export default function TextEditor() {
   const [quill, setQuill] = useState();
   const socketRef = useRef(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [permissions, setPermissions] = useState({
-    isPublic: false,
-    collaborators: [],
-    isOwner: false
-  });
   const [userRole, setUserRole] = useState(null); 
   const [isPublicDoc, setIsPublicDoc] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const { theme, toggleTheme } = useTheme();
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
