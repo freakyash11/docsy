@@ -6,7 +6,6 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useAuth, useUser } from '@clerk/clerk-react'
 import { Share2, Globe, Users, Crown, Eye, Keyboard, X } from "lucide-react"
 import ShareModal from "./components/ShareModal"
-import { useTheme } from './context/ThemeContext'; 
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
