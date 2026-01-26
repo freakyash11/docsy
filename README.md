@@ -1,5 +1,5 @@
 # Docsy – Real-time Collaborative Document Editor
-![Logo](/docs/screenshots/logo.png)
+![Logo](/docs/public/logo.png)
 Docsy is a lightweight, real-time collaborative web-based document editor inspired by tools like Google Docs, designed with a strong focus on simplicity, speed, and a distraction-free writing experience.
 
 >Docs without the bulk.
@@ -50,10 +50,10 @@ Users can create documents, edit content collaboratively in real time, share doc
 ## 📸 Screenshots
 
 1. **Landing Page**
-![Landing Page](/docs/screenshots/landing-page.png)
+![Landing Page](/docs/public/landing-page.png)
 
 2. **Authentication Page**
-![Auth Page](/docs/screenshots/auth-page.png)
+![Auth Page](/docs/public/auth-page.png)
 > Secure authentication using Clerk
 
 3. **Dashboard** (My Documents Page)
