@@ -708,25 +708,11 @@ export default function TextEditor() {
         </div>
         
         <div className="flex items-center gap-3">
-          {isSignedIn && (
-            <button
-            onClick={toggleTheme}
-            className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-all duration-200 group"
-            title={theme === 'light' ? "Switch to Dark Mode" : "Switch to Light Mode"}
-            >
-            {theme === 'light' ? 
-            <Moon className="w-5 h-5 text-muted-text group-hover:text-slate-ink" /> : 
-            <Sun className="w-5 h-5 text-sun-yellow" />
-            }
-          </button>
-          )}
-          
           <button
-          onClick={() => setShowShortcuts(true)}
-          className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
-          title="Keyboard Shortcuts"
+            onClick={() => setShowShortcuts(true)}
+            className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
           >
-          <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink dark:group-hover:text-white" />
+            <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink dark:group-hover:text-white" />
           </button>
           
           <CollaboratorAvatars collaborators={collaborators} onlineUsers={onlineUsers} />
