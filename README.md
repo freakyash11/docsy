@@ -1,5 +1,5 @@
 # Docsy – Real-time Collaborative Document Editor
-![Logo](/docs/assests/logo.png)
+![Logo](https://github.com/freakyash11/docsy/raw/main/assests/logo.png)
 Docsy is a lightweight, real-time collaborative web-based document editor inspired by tools like Google Docs, designed with a strong focus on simplicity, speed, and a distraction-free writing experience.
 
 >Docs without the bulk.
