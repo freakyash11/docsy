@@ -69,10 +69,10 @@ Users can create documents, edit content collaboratively in real time, share doc
 ![Text Editor Dark Mode](/docs/assests/text-editor-dark.png)
 > Rich text editor in dark mode
 
-4. **Editor Header**
+6. **Editor Header**
 ![Editor Header](/docs/assests/editor-header.png)
 > Document header with collaborator presence and sharing controls
 
-5. **Share Modal**
+7. **Share Modal**
 ![Share Modal](/docs/assests/share-modal.png)
 > Share modal for managing collaborators and access permissions
