@@ -808,6 +808,21 @@ export default function TextEditor() {
         .dark .ql-editor span {
           color: inherit !important;
         }
+
+        /* Make bold text bright white in dark mode */
+        .dark .ql-editor strong,
+        .dark .ql-editor b {
+          color: #FFFFFF !important;
+          font-weight: 700 !important;
+        }
+
+        /* Make italic bold text also bright white */
+        .dark .ql-editor strong em,
+        .dark .ql-editor strong i,
+        .dark .ql-editor b em,
+        .dark .ql-editor b i {
+          color: #FFFFFF !important;
+        }
       `}</style>
 
       {/* Guest Banner */}
