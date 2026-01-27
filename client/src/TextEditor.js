@@ -9,7 +9,7 @@ import ShareModal from "./components/ShareModal"
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
-  [{ header: [1, 2, 3, 4, 5, 6, false] }],
+  [{ header: [1, 2, 3, false] }],
   [{ font: [] }],
   [{ list: "ordered" }, { list: "bullet" }],
   ["bold", "italic", "underline"],
@@ -646,6 +646,36 @@ export default function TextEditor() {
           color: #212529 !important;
         }
 
+        /* Heading sizes - Universal standards */
+        .ql-editor h1 {
+          font-size: 2.5em !important;
+          font-weight: 700 !important;
+          line-height: 1.2 !important;
+          margin-top: 0.67em !important;
+          margin-bottom: 0.67em !important;
+        }
+
+        .ql-editor h2 {
+          font-size: 2em !important;
+          font-weight: 700 !important;
+          line-height: 1.3 !important;
+          margin-top: 0.83em !important;
+          margin-bottom: 0.83em !important;
+        }
+
+        .ql-editor h3 {
+          font-size: 1.5em !important;
+          font-weight: 600 !important;
+          line-height: 1.4 !important;
+          margin-top: 1em !important;
+          margin-bottom: 1em !important;
+        }
+
+        .ql-editor p {
+          margin-top: 0 !important;
+          margin-bottom: 1em !important;
+        }
+
         .ql-editor.ql-blank::before {
           color: #6C757D !important;
           font-style: italic !important;
@@ -742,6 +772,13 @@ export default function TextEditor() {
         .dark .ql-editor {
           color: #E9ECEF !important;
           caret-color: #3A86FF !important;
+        }
+
+        /* Headings in dark mode - bright white */
+        .dark .ql-editor h1,
+        .dark .ql-editor h2,
+        .dark .ql-editor h3 {
+          color: #FFFFFF !important;
         }
 
         .dark .ql-editor.ql-blank::before {
