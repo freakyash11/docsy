@@ -786,6 +786,28 @@ export default function TextEditor() {
           border-left: 4px solid #404040 !important;
           color: #ADB5BD !important;
         }
+
+        /* Override inline background colors in dark mode */
+        .dark .ql-editor * {
+          background-color: transparent !important;
+        }
+
+        .dark .ql-editor pre.ql-syntax {
+          background-color: #1E1E1E !important;
+        }
+
+        /* Ensure text is always visible in dark mode */
+        .dark .ql-editor p,
+        .dark .ql-editor h1,
+        .dark .ql-editor h2,
+        .dark .ql-editor h3,
+        .dark .ql-editor h4,
+        .dark .ql-editor h5,
+        .dark .ql-editor h6,
+        .dark .ql-editor li,
+        .dark .ql-editor span {
+          color: inherit !important;
+        }
       `}</style>
 
       {/* Guest Banner */}
