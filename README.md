@@ -17,6 +17,7 @@ Users can create documents, edit content collaboratively in real time, share doc
 * Simple sharing via links and email invitations
 * Role-based access control (Owner / Editor / Viewer)
 * Collaborator presence indicators in the editor header
+* Light and Dark mode support for comfortable writing
 
 ## 🛠 Tech Stack
 
@@ -57,3 +58,21 @@ Users can create documents, edit content collaboratively in real time, share doc
 > Secure authentication using Clerk
 
 3. **Dashboard** (My Documents Page)
+![Dashboard](/docs/assests/dashboard.png)
+> Rich text editor with real-time editing support
+
+4. **Text Editor**
+![Text Editor](/docs/assests/text-editor.png)
+> Rich text editor with real-time editing support
+
+5. **Text Editor (Dark Mode)**
+![Text Editor Dark Mode](/docs/assests/text-editor-dark.png)
+> Rich text editor in dark mode
+
+4. **Editor Header**
+![Editor Header](/docs/assests/editor-header.png)
+> Document header with collaborator presence and sharing controls
+
+5. **Share Modal**
+![Share Modal](/docs/assests/share-modal.png)
+> Share modal for managing collaborators and access permissions
