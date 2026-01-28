@@ -3,7 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 
 const ThemeContext = createContext();
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 // Helper to get the effective theme (resolves 'system' to 'light' or 'dark')
 const getEffectiveTheme = (theme) => {
