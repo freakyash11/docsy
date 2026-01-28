@@ -76,3 +76,31 @@ Users can create documents, edit content collaboratively in real time, share doc
 7. **Share Modal**
 ![Share Modal](/docs/assests/share-modal.png)
 > Share modal for managing collaborators and access permissions
+
+## 🔐 Access Control
+Docsy follows a simple and secure role-based access model:
+* **Owner** - Full access, can manage collaborators and permissions
+* **Editor** - Can edit document content
+* **Viewer** - Read-only access
+> Pending invitations and collaborator management are visible only to the document owner.
+
+## 📌 Current Status
+Implemented:
+* Authentication
+* Document CRUD and dashboard
+* Real-time collaborative editing
+* Autosave
+* Sharing and permissions
+* Collaborator presence indicators
+
+## 🧭 Roadmap / Future Enhancements
+* Comment system
+* Version history UI
+* AI-assisted writing tools
+* Semantic search
+* Image uploads using cloud storage
+* Background jobs for cleanup and autosave
+* Monitoring and logging
+
+## 🏁 Conclusion
+Docsy demonstrates a complete full-stack real-time application, combining modern frontend development, scalable backend architecture, real-time collaboration, and thoughtful UX design. The project reflects a strong understanding of collaborative systems, authentication, real-time data flow, and clean product-focused engineering.
