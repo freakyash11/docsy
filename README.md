@@ -1,5 +1,5 @@
 # Docsy – Real-time Collaborative Document Editor
-![Logo](https://github.com/freakyash11/docsy/raw/main/assests/logo.png)
+![Logo](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/logo.png)
 Docsy is a lightweight, real-time collaborative web-based document editor inspired by tools like Google Docs, designed with a strong focus on simplicity, speed, and a distraction-free writing experience.
 
 >Docs without the bulk.
@@ -51,30 +51,30 @@ Users can create documents, edit content collaboratively in real time, share doc
 ## 📸 Screenshots
 
 1. **Landing Page**
-![Landing Page](/docs/assests/landing-page.png)
+![Landing Page](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/landing-page.png)
 
 2. **Authentication Page**
-![Auth Page](/docs/assests/auth-page.png)
+![Auth Page](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/auth-page.png)
 > Secure authentication using Clerk
 
 3. **Dashboard** (My Documents Page)
-![Dashboard](/docs/assests/dashboard.png)
+![Dashboard](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/dashboard.png)
 > Rich text editor with real-time editing support
 
 4. **Text Editor**
-![Text Editor](/docs/assests/text-editor.png)
+![Text Editor](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/text-editor.png)
 > Rich text editor with real-time editing support
 
 5. **Text Editor (Dark Mode)**
-![Text Editor Dark Mode](/docs/assests/text-editor-dark.png)
+![Text Editor Dark Mode](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/text-editor-dark.png)
 > Rich text editor in dark mode
 
 6. **Editor Header**
-![Editor Header](/docs/assests/editor-header.png)
+![Editor Header](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/editor-header.png)
 > Document header with collaborator presence and sharing controls
 
 7. **Share Modal**
-![Share Modal](/docs/assests/share-modal.png)
+![Share Modal](https://github.com/freakyash11/docsy/raw/main/assests/Screenshot/share-modal.png)
 > Share modal for managing collaborators and access permissions
 
 ## 🔐 Access Control
