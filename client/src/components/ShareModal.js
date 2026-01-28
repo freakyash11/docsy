@@ -48,9 +48,33 @@ export default function ShareModal({
           }
           
           const data = await response.json();
-          setIsPublic(data.isPublic || false);
-          setCollaborators(data.collaborators || []);
-          setPendingInvites(data.pendingInvites || []);
+          console.log('API Response:', data); // Debug log
+          
+          // Set public status from document object
+          setIsPublic(data.document?.isPublic || false);
+          
+          // Filter invitations by status
+          const allInvitations = data.invitations || [];
+          
+          // Pending invitations (not accepted, not revoked, not expired)
+          const pending = allInvitations.filter(inv => 
+            inv.status === 'pending' && new Date(inv.expiresAt) > new Date()
+          );
+          
+          // Accepted invitations become collaborators
+          const accepted = allInvitations.filter(inv => 
+            inv.status === 'accepted'
+          ).map(inv => ({
+            email: inv.email,
+            permission: inv.role,
+            id: inv.id
+          }));
+          
+          setPendingInvites(pending);
+          setCollaborators(accepted);
+          
+          console.log('Pending:', pending); // Debug log
+          console.log('Collaborators:', accepted); // Debug log
         } catch (err) {
           console.error('Error fetching sharing data:', err);
           setError("Failed to load sharing settings");
@@ -80,7 +104,7 @@ export default function ShareModal({
     try {
       setSaveStatus("saving");
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/document/${documentId}`, {
+      const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +154,7 @@ export default function ShareModal({
     
     try {
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/${documentId}/invite`, {
+      const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,7 +169,8 @@ export default function ShareModal({
       }
       
       const data = await response.json();
-      setPendingInvites(prev => [...prev, data.invitation]);
+      // Add the new invitation to pending invites
+      setPendingInvites(prev => [...prev, data.invitation || data]);
       setNewEmail("");
       setNewRole("viewer");
       setSaveStatus("Invitation sent");
