@@ -37,7 +37,7 @@ export default function ShareModal({
         setError("");
         try {
           const token = await getToken();
-          const response = await fetch(`${backendUrl}/api/invite/document/${documentId}`, {
+          const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
