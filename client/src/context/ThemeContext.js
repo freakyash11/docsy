@@ -62,11 +62,20 @@ export const ThemeProvider = ({ children }) => {
     fetchThemeFromDB();
   }, [isSignedIn, getToken]);
 
+  // Force light mode for non-signed-in users
+  useEffect(() => {
+    if (!isSignedIn) {
+      setThemeState('light');
+      localStorage.setItem('docsy-theme', 'light');
+    }
+  }, [isSignedIn]);
+
   // Apply effective theme to DOM
   useEffect(() => {
     const applyTheme = () => {
       const root = window.document.documentElement;
-      const effectiveTheme = getEffectiveTheme(theme);
+      // Force light mode for non-signed-in users
+      const effectiveTheme = isSignedIn ? getEffectiveTheme(theme) : 'light';
 
       if (effectiveTheme === 'dark') {
         root.classList.add('dark');
@@ -79,13 +88,13 @@ export const ThemeProvider = ({ children }) => {
 
     // Update localStorage for guest users
     if (!isSignedIn) {
-      localStorage.setItem('docsy-theme', theme);
+      localStorage.setItem('docsy-theme', 'light');
     }
   }, [theme, isSignedIn]);
 
-  // Listen for OS theme changes ONLY when theme is 'system'
+  // Listen for OS theme changes ONLY when theme is 'system' AND user is signed in
   useEffect(() => {
-    if (theme !== 'system') return;
+    if (theme !== 'system' || !isSignedIn) return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
@@ -111,7 +120,7 @@ export const ThemeProvider = ({ children }) => {
       mediaQuery.addListener(handleChange);
       return () => mediaQuery.removeListener(handleChange);
     }
-  }, [theme]);
+  }, [theme, isSignedIn]);
 
   // Listen for localStorage changes from other tabs (guest users only)
   useEffect(() => {
@@ -131,6 +140,12 @@ export const ThemeProvider = ({ children }) => {
   const setTheme = async (newTheme) => {
     if (!['light', 'dark', 'system'].includes(newTheme)) {
       console.error('Invalid theme value:', newTheme);
+      return;
+    }
+
+    // Prevent theme changes for non-signed-in users
+    if (!isSignedIn) {
+      console.warn('Theme changes are only available for signed-in users');
       return;
     }
 
@@ -154,25 +169,29 @@ export const ThemeProvider = ({ children }) => {
         // Still update localStorage as fallback
         localStorage.setItem('docsy-theme', newTheme);
       }
-    } else {
-      // For guest users, save to localStorage
-      localStorage.setItem('docsy-theme', newTheme);
     }
   };
 
   // Toggle between light and dark (maintains manual override)
   const toggleTheme = () => {
+    // Only allow toggle for signed-in users
+    if (!isSignedIn) {
+      console.warn('Theme toggle is only available for signed-in users');
+      return;
+    }
+    
     const currentEffective = getEffectiveTheme(theme);
     const newTheme = currentEffective === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
   };
 
   // Get the current effective theme for UI display
-  const effectiveTheme = getEffectiveTheme(theme);
+  // Force light for non-signed-in users
+  const effectiveTheme = isSignedIn ? getEffectiveTheme(theme) : 'light';
 
   return (
     <ThemeContext.Provider value={{ 
-      theme,           // The actual theme setting ('light', 'dark', or 'system')
+      theme: isSignedIn ? theme : 'light',  // Always return 'light' for non-signed-in users
       effectiveTheme,  // The resolved theme ('light' or 'dark')
       setTheme, 
       toggleTheme, 
