@@ -18,11 +18,11 @@ const userSchema = new mongoose.Schema({
     enum: ['email', 'google', 'github', 'discord'],
     default: 'email'
   },
-  googleId: {
-    type: String,
-    sparse: true, 
-    unique: true
-  },
+  // googleId: {
+  //   type: String,
+  //   sparse: true, 
+  //   unique: true
+  // },
   clerkId: {
     type: String,
     required: true,

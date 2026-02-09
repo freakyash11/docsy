@@ -98,7 +98,7 @@ router.post('/verify', authenticateUser, async (req, res) => {
         email: clerkUser.emailAddresses[0]?.emailAddress,
         name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim(),
         provider: clerkUser.externalAccounts?.[0]?.provider || 'email',
-        googleId: clerkUser.externalAccounts?.find(acc => acc.provider === 'google')?.providerUserId,
+        // googleId: clerkUser.externalAccounts?.find(acc => acc.provider === 'google')?.providerUserId,
         profileImage: clerkUser.imageUrl,
         emailVerified: clerkUser.emailAddresses[0]?.verification?.status === 'verified'
       });

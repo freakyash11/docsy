@@ -19,7 +19,7 @@ class UserSyncService {
         email: primaryEmail?.emailAddress,
         name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim(),
         provider: googleAccount ? 'google' : 'email',
-        googleId: googleAccount?.providerUserId || null,
+        // googleId: googleAccount?.providerUserId || null,
         profileImage: clerkUser.imageUrl,
         emailVerified: primaryEmail?.verification?.status === 'verified'
       };

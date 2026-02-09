@@ -137,8 +137,7 @@ async function handleUserCreated(userData) {
       id,
       email: email_addresses?.[0]?.email_address,
       firstName: first_name,
-      lastName: last_name,
-      familyName: family_name
+      lastName: last_name
     });
 
     const primaryEmail = email_addresses?.find(email => email.id === userData.primary_email_address_id);
@@ -148,7 +147,6 @@ async function handleUserCreated(userData) {
 
     console.log('💾 Attempting to save user to MongoDB...');
 
-    // Upsert: Create or update user
     const user = await User.findOneAndUpdate(
       { clerkId: id },
       {
@@ -156,21 +154,14 @@ async function handleUserCreated(userData) {
         email: primaryEmail?.email_address,
         name: fullName,
         provider: googleAccount ? 'google' : 'email',
-        googleId: googleAccount?.provider_user_id || null,
         profileImage: image_url,
         emailVerified: primaryEmail?.verification?.status === 'verified',
-        preferences: { theme: 'system' } // Add default preferences
+        preferences: { theme: 'system' }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    console.log('✅ User saved to MongoDB:', {
-      _id: user._id,
-      clerkId: user.clerkId,
-      email: user.email,
-      name: user.name
-    });
-
+    console.log('✅ User saved:', user.email);
     return user;
   } catch (error) {
     console.error('❌ handleUserCreated error:', error);

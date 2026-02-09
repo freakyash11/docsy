@@ -320,7 +320,7 @@ export const acceptInvitation = async (req, res) => {
           email: primaryEmail?.emailAddress,
           name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Unknown User',
           provider: googleAccount ? 'google' : 'email',
-          googleId: googleAccount?.providerUserId || null,
+          // googleId: googleAccount?.providerUserId || null,
           profileImage: clerkUser.imageUrl,
           emailVerified: primaryEmail?.verification?.status === 'verified'
         });
