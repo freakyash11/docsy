@@ -38,6 +38,8 @@ app.use((req, res, next) => {
   }
 });
 
+app.use('/api/webhooks', webhookRoutes);
+
 // Middleware
 app.use(express.json());
 
@@ -62,7 +64,6 @@ const io = setupSocket(server, redis);  // Pass both server and redis instance
 app.set('io', io); // Make io available to route handlers
 console.log('Socket.IO setup completed');
 
-app.use('/api/webhooks', webhookRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/invite', invitationRoutes);
 app.use('/api/preferences', preferencesRoutes);
