@@ -19,7 +19,7 @@ router.get('/:token', getInvitationByToken);
 router.post('/:token/validate', authMiddleware, validateInvitation);
 router.post('/:token/accept', authMiddleware, acceptInvitation);
 router.patch('/revoke/:invitationId', authMiddleware, revokeInvitation);
-router.get('/documents/:documentId', authMiddleware, getDocumentInvitations);
+router.get('/document/:documentId', authMiddleware, getDocumentInvitations);
 router.post('/:invitationId/resend', authMiddleware, resendInvitation);
 router.get('/cleanup', cleanupExpiredInvitations);
 

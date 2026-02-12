@@ -37,7 +37,7 @@ export default function ShareModal({
         setError("");
         try {
           const token = await getToken();
-          const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}`, {
+          const response = await fetch(`${backendUrl}/api/invite/document/${documentId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -91,7 +91,7 @@ export default function ShareModal({
 
   const handleCopyLink = async () => {
     try {
-      const documentLink = `${window.location.origin}/documents/${documentId}`;
+      const documentLink = `${window.location.origin}/document/${documentId}`;
       await navigator.clipboard.writeText(documentLink);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
@@ -104,7 +104,7 @@ export default function ShareModal({
     try {
       setSaveStatus("saving");
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}`, {
+      const response = await fetch(`${backendUrl}/api/invite/document/${documentId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ export default function ShareModal({
     
     try {
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/documents/${documentId}/invite`, {
+      const response = await fetch(`${backendUrl}/api/invite/document/${documentId}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
