@@ -154,7 +154,7 @@ export default function ShareModal({
     
     try {
       const token = await getToken();
-      const response = await fetch(`${backendUrl}/api/invite/document/${documentId}/invite`, {
+      const response = await fetch(`${backendUrl}/api/invite/${documentId}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
