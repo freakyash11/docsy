@@ -91,7 +91,7 @@ export default function ShareModal({
 
   const handleCopyLink = async () => {
     try {
-      const documentLink = `${window.location.origin}/document/${documentId}`;
+      const documentLink = `${window.location.origin}/documents/${documentId}`;
       await navigator.clipboard.writeText(documentLink);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
