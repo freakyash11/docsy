@@ -234,13 +234,13 @@ export default function DemoEditor() {
 
   // Dynamic conversion message based on engagement
   const getConversionMessage = useCallback((timeSpent, editsCount) => {
-    if (editsCount > 20) {
+    if (editsCount > 40) {
       return {
         title: "You're on a roll! 🔥",
         description: "You've made 20+ edits. Sign up to save this masterpiece!"
       }
     }
-    if (timeSpent > 60) {
+    if (timeSpent > 100) {
       return {
         title: "Loving Docsy so far?",
         description: "Create an account to keep your work and invite your team."
