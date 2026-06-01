@@ -17,6 +17,16 @@
  *    Key   : presence:sock:{socketId}
  *    Value : "{mongoUserId}:{documentId}"
  *
+ *  String (socket tombstone — TTL-bounded connection record):
+ *    Key   : presence:socket:{socketId}        TTL: 90 s
+ *    Value : JSON string  →  { documentId, mongoUserId, createdAt }
+ *
+ *  Tombstones act as a soft proof-of-life per socket. A key expiring
+ *  means the socket has been silent for longer than the TTL window.
+ *  Heartbeats (future) will call refreshSocketTombstone() to reset
+ *  the TTL on each ping. Cleanup workers (future) can scan for stale
+ *  presence entries whose tombstone no longer exists.
+ *
  *  The reverse-lookup lets removeUser resolve the correct hash field
  *  in O(1) using only the socketId that the disconnect handler has,
  *  without scanning the full hash.
@@ -45,6 +55,16 @@ const docKey = (documentId) => `presence:doc:${documentId}`;
 
 /** Reverse-lookup key so we can find a user by socketId alone. */
 const sockKey = (socketId) => `presence:sock:${socketId}`;
+
+/**
+ * Tombstone key — a TTL-bounded record proving a socket is alive.
+ * Intentionally uses a different prefix segment ("socket" vs "sock")
+ * to keep tombstones and reverse-lookup strings scannable separately.
+ */
+const tombstoneKey = (socketId) => `presence:socket:${socketId}`;
+
+/** TTL applied to every socket tombstone, in seconds. */
+const TOMBSTONE_TTL_SECONDS = 90;
 
 // ─── Module initialisation ────────────────────────────────────────
 
@@ -199,6 +219,97 @@ const PresenceService = {
 
     console.log(`[PresenceService] Updated role for ${mongoUserId} in doc ${documentId} → ${newRole}`);
     return true;
+  },
+
+  // ─── Socket tombstones ─────────────────────────────────────────
+  //
+  // Tombstones are INDEPENDENT of the presence hash. They are keyed
+  // by socketId and carry a 90-second TTL. Their only purpose is to
+  // record that a socket was alive at join time and (future) to let
+  // heartbeats prove the socket is still connected.
+  //
+  // Tombstone key  :  presence:socket:{socketId}   (TTL = 90 s)
+  // Tombstone value:  { documentId, mongoUserId, createdAt }
+
+  /**
+   * Create a socket tombstone when a user joins a document.
+   * Sets a 90-second TTL. Idempotent — safe to call on reconnection.
+   *
+   * @param {string} socketId
+   * @param {string} documentId
+   * @param {string} mongoUserId
+   * @returns {Promise<void>}
+   */
+  async createSocketTombstone(socketId, documentId, mongoUserId) {
+    assertReady();
+
+    const value = JSON.stringify({
+      documentId,
+      mongoUserId,
+      createdAt: new Date().toISOString(),
+    });
+
+    // SET with EX so the key self-destructs if the socket goes silent
+    await redisClient.set(tombstoneKey(socketId), value, 'EX', TOMBSTONE_TTL_SECONDS);
+
+    console.log(`[PresenceService] Tombstone created for socket ${socketId} (TTL ${TOMBSTONE_TTL_SECONDS}s)`);
+  },
+
+  /**
+   * Reset the TTL on an existing tombstone without changing its value.
+   * Intended for future heartbeat handlers — calling this on every
+   * ping keeps the key alive for as long as the socket is active.
+   *
+   * Returns false if the tombstone no longer exists (expired or
+   * already removed), so callers can decide whether to recreate it.
+   *
+   * @param {string} socketId
+   * @returns {Promise<boolean>} true if the TTL was reset, false if key missing.
+   */
+  async refreshSocketTombstone(socketId) {
+    assertReady();
+
+    // EXPIRE returns 1 if the key exists and was updated, 0 if not
+    const result = await redisClient.expire(tombstoneKey(socketId), TOMBSTONE_TTL_SECONDS);
+    const alive = result === 1;
+
+    if (!alive) {
+      console.log(`[PresenceService] Tombstone refresh failed — key missing for socket ${socketId}`);
+    }
+
+    return alive;
+  },
+
+  /**
+   * Delete a socket tombstone on clean disconnect.
+   * A no-op if the key has already expired — safe to call unconditionally
+   * in the disconnect handler.
+   *
+   * @param {string} socketId
+   * @returns {Promise<void>}
+   */
+  async removeSocketTombstone(socketId) {
+    assertReady();
+
+    await redisClient.del(tombstoneKey(socketId));
+
+    console.log(`[PresenceService] Tombstone removed for socket ${socketId}`);
+  },
+
+  /**
+   * Retrieve the tombstone payload for a socket, or null if it has
+   * expired or was never created.
+   *
+   * Useful for cleanup workers and diagnostics.
+   *
+   * @param {string} socketId
+   * @returns {Promise<{ documentId: string, mongoUserId: string, createdAt: string } | null>}
+   */
+  async getSocketTombstone(socketId) {
+    assertReady();
+
+    const raw = await redisClient.get(tombstoneKey(socketId));
+    return raw ? JSON.parse(raw) : null;
   },
 
   // ─── Internal helpers ────────────────────────────────────────────

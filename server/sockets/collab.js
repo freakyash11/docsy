@@ -89,6 +89,7 @@ function setupSocket(server, redis) {
         // Remove user from presence tracking via PresenceService
         if (socket.documentId) {
           await PresenceService.removeUser(socket.documentId, socket.id);
+          await PresenceService.removeSocketTombstone(socket.id);
           
           // Notify others that user left
           if (authenticatedUser) {
@@ -157,6 +158,13 @@ function setupSocket(server, redis) {
             };
             
             const presenceList = await PresenceService.addUser(documentId, presenceData);
+
+            // Create socket tombstone — TTL-bounded proof-of-life for this connection
+            await PresenceService.createSocketTombstone(
+              socket.id,
+              documentId,
+              authenticatedUser.mongoUserId
+            );
             
             // Notify others that user joined
             socket.to(documentId).emit("user-joined", {
