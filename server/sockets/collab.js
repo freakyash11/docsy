@@ -35,6 +35,12 @@ function setupSocket(server, redis) {
     io.adapter(createAdapter(redis, redis.duplicate()));
     console.log('Redis adapter attached');
 
+    // Initialise PresenceService with a dedicated Redis connection.
+    // A separate client is used so presence commands never share the
+    // pub/sub connection that the Socket.IO adapter reserves.
+    PresenceService.init(redis.duplicate());
+    console.log('PresenceService initialised');
+
     io.engine.on('connection_error', (err) => {
       console.error('Socket.IO engine error:', err.message);
     });
@@ -77,12 +83,12 @@ function setupSocket(server, redis) {
         console.log('No token provided - continuing as guest user');
       }
 
-      socket.on("disconnect", (reason) => {
+      socket.on("disconnect", async (reason) => {
         console.log('Disconnected:', socket.id, 'Reason:', reason, 'Transport:', socket.conn.transport.name);
         
         // Remove user from presence tracking via PresenceService
         if (socket.documentId) {
-          PresenceService.removeUser(socket.documentId, socket.id);
+          await PresenceService.removeUser(socket.documentId, socket.id);
           
           // Notify others that user left
           if (authenticatedUser) {
@@ -150,7 +156,7 @@ function setupSocket(server, redis) {
               role: userRole
             };
             
-            const presenceList = PresenceService.addUser(documentId, presenceData);
+            const presenceList = await PresenceService.addUser(documentId, presenceData);
             
             // Notify others that user joined
             socket.to(documentId).emit("user-joined", {
@@ -165,7 +171,7 @@ function setupSocket(server, redis) {
           }
           
           // Get current online users for this document via PresenceService
-          const onlineUsers = PresenceService.getActiveUsers(documentId);
+          const onlineUsers = await PresenceService.getActiveUsers(documentId);
           
           socket.emit("load-document", {
             data: document.data,
@@ -215,7 +221,7 @@ function setupSocket(server, redis) {
           
           // Update presence list with new role via PresenceService
           if (socket.documentId && authenticatedUser) {
-            PresenceService.updateRole(socket.documentId, socket.id, userRole);
+            await PresenceService.updateRole(socket.documentId, socket.id, userRole);
           }
         } catch (error) {
           console.error('Error refreshing role:', error);

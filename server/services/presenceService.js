@@ -2,133 +2,221 @@
  * PresenceService
  *
  * Single source of truth for collaborator presence tracking.
- * Currently backed by an in-memory Map so existing behavior is
- * fully preserved. The public API is designed to be adapter-agnostic,
- * making a future Redis migration a drop-in replacement of this file only.
+ * Backed by Redis Hashes for cross-process durability and
+ * compatibility with the existing Socket.IO Redis adapter.
  *
- * Presence entry shape:
+ * ─── Key Strategy ────────────────────────────────────────────────
+ *
+ *  Hash (primary store):
+ *    Key   : presence:doc:{documentId}
+ *    Field : {mongoUserId}
+ *    Value : JSON string  →  { socketId, userId, mongoUserId,
+ *                              email, name, role, connectedAt }
+ *
+ *  String (reverse-lookup — socketId → location):
+ *    Key   : presence:sock:{socketId}
+ *    Value : "{mongoUserId}:{documentId}"
+ *
+ *  The reverse-lookup lets removeUser resolve the correct hash field
+ *  in O(1) using only the socketId that the disconnect handler has,
+ *  without scanning the full hash.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ *
+ * Presence entry shape (stored as JSON in each hash field):
  *   {
  *     socketId:    string,
  *     userId:      string,   // Clerk ID
- *     mongoUserId: string,   // MongoDB _id
+ *     mongoUserId: string,   // MongoDB _id  (also the hash field)
  *     email:       string,
  *     name:        string,
- *     role:        string    // 'owner' | 'editor' | 'viewer'
+ *     role:        string,   // 'owner' | 'editor' | 'viewer'
+ *     connectedAt: string    // ISO-8601 timestamp
  *   }
  */
 
-// In-memory store: { documentId -> PresenceEntry[] }
-const documentPresence = new Map();
+/** @type {import('ioredis').Redis | null} */
+let redisClient = null;
+
+// ─── Key helpers ──────────────────────────────────────────────────
+
+/** Primary presence hash for a document. */
+const docKey = (documentId) => `presence:doc:${documentId}`;
+
+/** Reverse-lookup key so we can find a user by socketId alone. */
+const sockKey = (socketId) => `presence:sock:${socketId}`;
+
+// ─── Module initialisation ────────────────────────────────────────
+
+/**
+ * Initialise the service with a live ioredis client.
+ * Must be called once before any other method.
+ *
+ * @param {import('ioredis').Redis} client
+ */
+function init(client) {
+  redisClient = client;
+  console.log('[PresenceService] Initialised with Redis client');
+}
+
+/** Throws if init() was not called first. */
+function assertReady() {
+  if (!redisClient) {
+    throw new Error('[PresenceService] Redis client not initialised — call PresenceService.init(redisClient) first');
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────
 
 const PresenceService = {
+  init,
+
   /**
-   * Add a user to a document's presence list.
-   * If the user (matched by mongoUserId) is already present
-   * (e.g. reconnected from a different socket), their entry is
-   * updated rather than duplicated.
+   * Add (or update on reconnection) a user in a document's presence hash.
+   * Upsert is keyed on mongoUserId so reconnections overwrite stale data.
+   *
+   * Also writes the reverse-lookup key for O(1) removeUser.
    *
    * @param {string} documentId
-   * @param {object} presenceData - Full presence entry object.
-   * @returns {PresenceEntry[]} Updated presence list for the document.
+   * @param {{ socketId, userId, mongoUserId, email, name, role }} presenceData
+   * @returns {Promise<{ socketId, userId, mongoUserId, email, name, role, connectedAt }[]>}
+   *          Full updated presence list for the document.
    */
-  addUser(documentId, presenceData) {
-    const presenceList = documentPresence.get(documentId) || [];
+  async addUser(documentId, presenceData) {
+    assertReady();
 
-    const existingIndex = presenceList.findIndex(
-      (p) => p.mongoUserId === presenceData.mongoUserId
-    );
+    const entry = {
+      ...presenceData,
+      connectedAt: new Date().toISOString(),
+    };
 
-    if (existingIndex >= 0) {
-      // Update existing entry (handles re-connections)
-      presenceList[existingIndex] = presenceData;
-    } else {
-      presenceList.push(presenceData);
-    }
+    const pipeline = redisClient.pipeline();
 
-    documentPresence.set(documentId, presenceList);
-    return presenceList;
+    // Upsert this user's field in the document hash
+    pipeline.hset(docKey(documentId), presenceData.mongoUserId, JSON.stringify(entry));
+
+    // Write reverse-lookup:  socketId  →  "mongoUserId:documentId"
+    pipeline.set(sockKey(presenceData.socketId), `${presenceData.mongoUserId}:${documentId}`);
+
+    await pipeline.exec();
+
+    // Return full list so callers can log count, etc.
+    return PresenceService.getAllRaw(documentId);
   },
 
   /**
-   * Update an existing presence entry identified by socketId.
-   * Partial updates are merged into the existing entry.
+   * Update arbitrary fields on an existing presence entry located by socketId.
+   * Uses the reverse-lookup key to find the hash field without scanning.
    *
    * @param {string} documentId
    * @param {string} socketId
    * @param {Partial<PresenceEntry>} updates
-   * @returns {PresenceEntry|null} The updated entry, or null if not found.
+   * @returns {Promise<object|null>} The updated entry, or null if not found.
    */
-  updateUser(documentId, socketId, updates) {
-    const presenceList = documentPresence.get(documentId);
-    if (!presenceList) return null;
+  async updateUser(documentId, socketId, updates) {
+    assertReady();
 
-    const entry = presenceList.find((p) => p.socketId === socketId);
-    if (!entry) return null;
+    const lookupVal = await redisClient.get(sockKey(socketId));
+    if (!lookupVal) return null;
 
-    Object.assign(entry, updates);
-    documentPresence.set(documentId, presenceList);
+    const [mongoUserId] = lookupVal.split(':');
+    const raw = await redisClient.hget(docKey(documentId), mongoUserId);
+    if (!raw) return null;
+
+    const entry = { ...JSON.parse(raw), ...updates };
+    await redisClient.hset(docKey(documentId), mongoUserId, JSON.stringify(entry));
     return entry;
   },
 
   /**
-   * Remove a user from a document's presence list by socketId.
-   * Cleans up the document key entirely when the list becomes empty.
+   * Remove a user from a document's presence hash.
+   * Uses the reverse-lookup key so we never have to scan the whole hash.
+   * Cleans up both the hash field and the reverse-lookup string.
    *
    * @param {string} documentId
    * @param {string} socketId
-   * @returns {PresenceEntry[]} Remaining presence list (may be empty).
+   * @returns {Promise<void>}
    */
-  removeUser(documentId, socketId) {
-    const presenceList = documentPresence.get(documentId) || [];
-    const updatedList = presenceList.filter((p) => p.socketId !== socketId);
+  async removeUser(documentId, socketId) {
+    assertReady();
 
-    if (updatedList.length === 0) {
-      documentPresence.delete(documentId);
-    } else {
-      documentPresence.set(documentId, updatedList);
+    const lookupVal = await redisClient.get(sockKey(socketId));
+    if (!lookupVal) {
+      console.log(`[PresenceService] No reverse-lookup found for socket ${socketId} — already removed?`);
+      return;
     }
 
-    return updatedList;
+    const [mongoUserId] = lookupVal.split(':');
+
+    const pipeline = redisClient.pipeline();
+    pipeline.hdel(docKey(documentId), mongoUserId);   // Remove from hash
+    pipeline.del(sockKey(socketId));                   // Remove reverse-lookup
+    await pipeline.exec();
+
+    console.log(`[PresenceService] Removed user ${mongoUserId} from doc ${documentId}`);
   },
 
   /**
    * Return the sanitised public representation of all active users
-   * for a given document (strips the internal socketId field).
+   * for a document (strips internal socketId and connectedAt fields).
    *
    * @param {string} documentId
-   * @returns {{ email, userId, mongoUserId, name, role }[]}
+   * @returns {Promise<{ email, userId, mongoUserId, name, role }[]>}
    */
-  getActiveUsers(documentId) {
-    return (documentPresence.get(documentId) || []).map(
-      ({ email, userId, mongoUserId, name, role }) => ({
-        email,
-        userId,
-        mongoUserId,
-        name,
-        role,
-      })
-    );
+  async getActiveUsers(documentId) {
+    assertReady();
+
+    const raw = await PresenceService.getAllRaw(documentId);
+    return raw.map(({ email, userId, mongoUserId, name, role }) => ({
+      email,
+      userId,
+      mongoUserId,
+      name,
+      role,
+    }));
   },
 
   /**
-   * Update the role of a specific user (identified by socketId)
-   * inside a document's presence list.
+   * Update only the role field for the user identified by socketId.
    *
    * @param {string} documentId
    * @param {string} socketId
    * @param {string} newRole
-   * @returns {boolean} Whether the update was applied.
+   * @returns {Promise<boolean>} Whether the update was applied.
    */
-  updateRole(documentId, socketId, newRole) {
-    const presenceList = documentPresence.get(documentId);
-    if (!presenceList) return false;
+  async updateRole(documentId, socketId, newRole) {
+    assertReady();
 
-    const entry = presenceList.find((p) => p.socketId === socketId);
-    if (!entry) return false;
+    const lookupVal = await redisClient.get(sockKey(socketId));
+    if (!lookupVal) return false;
 
-    entry.role = newRole;
-    documentPresence.set(documentId, presenceList);
+    const [mongoUserId] = lookupVal.split(':');
+    const raw = await redisClient.hget(docKey(documentId), mongoUserId);
+    if (!raw) return false;
+
+    const entry = { ...JSON.parse(raw), role: newRole };
+    await redisClient.hset(docKey(documentId), mongoUserId, JSON.stringify(entry));
+
+    console.log(`[PresenceService] Updated role for ${mongoUserId} in doc ${documentId} → ${newRole}`);
     return true;
+  },
+
+  // ─── Internal helpers ────────────────────────────────────────────
+
+  /**
+   * Fetch all raw presence entries (parsed from JSON) for a document.
+   * Useful internally and for logging/debugging.
+   *
+   * @param {string} documentId
+   * @returns {Promise<object[]>}
+   */
+  async getAllRaw(documentId) {
+    assertReady();
+
+    const hash = await redisClient.hgetall(docKey(documentId));
+    if (!hash) return [];
+
+    return Object.values(hash).map((v) => JSON.parse(v));
   },
 };
 
