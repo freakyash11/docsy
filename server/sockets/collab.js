@@ -4,12 +4,9 @@ import User from '../models/User.js';
 import { verifyToken } from '@clerk/backend';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Redis } from 'ioredis';
+import PresenceService from '../services/presenceService.js';
 
 const defaultValue = "";
-
-// In-memory store for online users per document
-// Format: { documentId: [{ socketId, userId, mongoUserId, email, name, role }] }
-const documentPresence = new Map();
 
 function setupSocket(server, redis) {
   try {
@@ -83,16 +80,9 @@ function setupSocket(server, redis) {
       socket.on("disconnect", (reason) => {
         console.log('Disconnected:', socket.id, 'Reason:', reason, 'Transport:', socket.conn.transport.name);
         
-        // Remove user from presence tracking
+        // Remove user from presence tracking via PresenceService
         if (socket.documentId) {
-          const presenceList = documentPresence.get(socket.documentId) || [];
-          const updatedList = presenceList.filter(p => p.socketId !== socket.id);
-          
-          if (updatedList.length === 0) {
-            documentPresence.delete(socket.documentId);
-          } else {
-            documentPresence.set(socket.documentId, updatedList);
-          }
+          PresenceService.removeUser(socket.documentId, socket.id);
           
           // Notify others that user left
           if (authenticatedUser) {
@@ -149,15 +139,8 @@ function setupSocket(server, redis) {
           socket.userRole = userRole;
           console.log('User role set:', socket.userRole, 'for document:', documentId, 'isPublic:', document.isPublic);
           
-          // Add user to presence tracking
+          // Add user to presence tracking via PresenceService
           if (authenticatedUser) {
-            const presenceList = documentPresence.get(documentId) || [];
-            
-            // Check if user already in list (from different socket)
-            const existingIndex = presenceList.findIndex(
-              p => p.mongoUserId === authenticatedUser.mongoUserId
-            );
-            
             const presenceData = {
               socketId: socket.id,
               userId: authenticatedUser.userId,
@@ -167,15 +150,7 @@ function setupSocket(server, redis) {
               role: userRole
             };
             
-            if (existingIndex >= 0) {
-              // Update existing presence
-              presenceList[existingIndex] = presenceData;
-            } else {
-              // Add new presence
-              presenceList.push(presenceData);
-            }
-            
-            documentPresence.set(documentId, presenceList);
+            const presenceList = PresenceService.addUser(documentId, presenceData);
             
             // Notify others that user joined
             socket.to(documentId).emit("user-joined", {
@@ -189,14 +164,8 @@ function setupSocket(server, redis) {
             console.log('User added to presence:', authenticatedUser.email, 'Total online:', presenceList.length);
           }
           
-          // Get current online users for this document
-          const onlineUsers = (documentPresence.get(documentId) || []).map(p => ({
-            email: p.email,
-            userId: p.userId,
-            mongoUserId: p.mongoUserId,
-            name: p.name,
-            role: p.role
-          }));
+          // Get current online users for this document via PresenceService
+          const onlineUsers = PresenceService.getActiveUsers(documentId);
           
           socket.emit("load-document", {
             data: document.data,
@@ -244,14 +213,9 @@ function setupSocket(server, redis) {
           socket.userRole = userRole;
           console.log('Role refreshed to:', socket.userRole);
           
-          // Update presence list with new role
+          // Update presence list with new role via PresenceService
           if (socket.documentId && authenticatedUser) {
-            const presenceList = documentPresence.get(socket.documentId) || [];
-            const userPresence = presenceList.find(p => p.socketId === socket.id);
-            if (userPresence) {
-              userPresence.role = userRole;
-              documentPresence.set(socket.documentId, presenceList);
-            }
+            PresenceService.updateRole(socket.documentId, socket.id, userRole);
           }
         } catch (error) {
           console.error('Error refreshing role:', error);
