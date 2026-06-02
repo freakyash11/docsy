@@ -259,6 +259,10 @@ export default function TextEditor() {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  // Tracks the last non-null Quill selection so AiPanel has it even after
+  // the editor blurs when the user clicks the AI button.
+  const [quillSelection, setQuillSelection] = useState(null); // { index, length, text } | null
+  const lastSelectionRef = useRef(null); // raw Quill Range, never null after first select
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -619,6 +623,31 @@ export default function TextEditor() {
     setQuill(q);
   }, []);
 
+  // ── Track Quill selection so AiPanel has it after the editor blurs ──
+  // Quill fires 'selection-change' with (range, oldRange, source).
+  // range is null when the editor loses focus — we keep the last non-null
+  // value so clicking the AI button doesn't wipe out the selection.
+  useEffect(() => {
+    if (!quill) return;
+
+    const handleSelectionChange = (range) => {
+      if (range) {
+        lastSelectionRef.current = range;
+        if (range.length > 0) {
+          const text = quill.getText(range.index, range.length).trim();
+          setQuillSelection({ index: range.index, length: range.length, text });
+        } else {
+          // Cursor placed but nothing selected
+          setQuillSelection(null);
+        }
+      }
+      // range === null means editor blurred — intentionally keep previous state
+    };
+
+    quill.on('selection-change', handleSelectionChange);
+    return () => quill.off('selection-change', handleSelectionChange);
+  }, [quill]);
+
  return (
     <div className="h-screen flex flex-col bg-light-bg dark:bg-slate-ink font-['Inter'] transition-colors duration-300">
       <style>{`
@@ -974,6 +1003,7 @@ export default function TextEditor() {
         isOpen={isAiPanelOpen}
         onClose={() => setIsAiPanelOpen(false)}
         quill={quill}
+        quillSelection={quillSelection}
         userRole={userRole}
       />
     </div>
