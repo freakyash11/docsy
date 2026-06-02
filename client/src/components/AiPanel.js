@@ -179,8 +179,9 @@ function ScopeBadge({ hasSelection, selectionText }) {
  * @param {Function} props.onClose
  * @param {object}  props.quill          - Quill instance (used for apply operations only)
  * @param {{ index: number, length: number, text: string } | null} props.quillSelection
- *   Frozen snapshot of the user's last active selection, captured in TextEditor
- *   BEFORE the click blurs Quill. Null when nothing was selected.
+ *   Live selection snapshot from TextEditor. Updated by Quill's selection-change
+ *   listener — preserves the last real selection across blur events, and updates
+ *   immediately when the user highlights new text.
  * @param {string}  props.userRole       - 'owner' | 'editor' | 'viewer'
  */
 export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole }) {
@@ -194,34 +195,16 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   const countdownRef                    = useRef(null);
   const isViewer                        = userRole === 'viewer';
 
-  // Freeze the selection at the moment the AI panel OPENS (or the user changes tab).
-  // This is a second safety net: even if quillSelection updates between opening and
-  // clicking Run, the action uses the scope that was shown to the user.
-  const [frozenSelection, setFrozenSelection] = useState(null);
 
-  // When the panel opens, snapshot the current selection.
-  useEffect(() => {
-    if (isOpen) {
-      setFrozenSelection(quillSelection);
-    }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-  // ↑ Intentionally only depend on isOpen so the scope doesn't shift while the
-  //   panel is visible. quillSelection is read once when the panel opens.
-
-  // Allow the selection to refresh whenever the user switches tabs
-  // (in case they go back to the editor and re-select between tabs).
+  // Allow the selection to refresh whenever the user switches tabs.
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
-    setFrozenSelection(quillSelection); // refresh scope on tab switch
     reset();
-  }, [reset, quillSelection]);
+  }, [reset]);
 
   // Reset on panel close
   useEffect(() => {
-    if (!isOpen) {
-      reset();
-      setFrozenSelection(null);
-    }
+    if (!isOpen) reset();
   }, [isOpen, reset]);
 
   // ── 429 countdown ────────────────────────────────────────────────
@@ -238,11 +221,13 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
     return () => clearInterval(countdownRef.current);
   }, [retryAfter]);
 
-  // ── Derive input text from frozen scope ──────────────────────────
-  // This is the text that will be sent to the AI.
-  const hasSelection  = Boolean(frozenSelection && frozenSelection.length > 0);
-  const inputText     = hasSelection
-    ? frozenSelection.text
+  // ── Derive input text from live quillSelection prop ─────────────
+  // quillSelection is kept current by TextEditor's selection-change listener,
+  // which preserves the last non-null range across blur events (e.g. clicking
+  // the AI panel button) and updates immediately when the user re-selects text.
+  const hasSelection = Boolean(quillSelection && quillSelection.length > 0);
+  const inputText    = hasSelection
+    ? quillSelection.text
     : (quill ? quill.getText().trim() : '');
 
   // ── Run the AI action ────────────────────────────────────────────
@@ -265,18 +250,18 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   const handleInsert = useCallback(() => {
     if (!quill || !result || isViewer) return;
 
-    if (hasSelection && frozenSelection) {
-      // Replace the exact selection range that was used as input
-      quill.deleteText(frozenSelection.index, frozenSelection.length);
-      quill.insertText(frozenSelection.index, result);
-      quill.setSelection(frozenSelection.index, result.length);
+    if (hasSelection && quillSelection) {
+      // Replace the exact selection range that was active when Run was clicked
+      quill.deleteText(quillSelection.index, quillSelection.length);
+      quill.insertText(quillSelection.index, result);
+      quill.setSelection(quillSelection.index, result.length);
     } else {
       // No selection — the AI operated on the full document; replace it
       quill.setText(result);
       quill.setSelection(result.length, 0);
     }
     onClose();
-  }, [quill, result, isViewer, hasSelection, frozenSelection, onClose]);
+  }, [quill, result, isViewer, hasSelection, quillSelection, onClose]);
 
   const handleAppend = useCallback(() => {
     if (!quill || !result || isViewer) return;
@@ -373,10 +358,10 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
         {/* ── Body ─────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
-          {/* Scope badge — shows selection preview or "Full document" */}
+          {/* Scope badge — shows live selection preview or "Full document" */}
           <ScopeBadge
             hasSelection={hasSelection}
-            selectionText={frozenSelection?.text}
+            selectionText={quillSelection?.text}
           />
 
           {/* Description */}
@@ -529,10 +514,7 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
 
               {/* Try again */}
               <button
-                onClick={() => {
-                  reset();
-                  setFrozenSelection(quillSelection); // refresh scope for retry
-                }}
+                onClick={reset}
                 className="w-full text-xs text-muted-text dark:text-cool-grey hover:text-slate-ink dark:hover:text-white transition-colors py-1"
               >
                 ↺ Try again with different settings

@@ -259,10 +259,10 @@ export default function TextEditor() {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
-  // Tracks the last non-null Quill selection so AiPanel has it even after
-  // the editor blurs when the user clicks the AI button.
+  // Live Quill selection snapshot. Set by a selection-change listener below.
+  // Preserves the last real range across blur events; updates immediately when
+  // the user highlights new text (even while the AI panel is open).
   const [quillSelection, setQuillSelection] = useState(null); // { index, length, text } | null
-  const lastSelectionRef = useRef(null); // raw Quill Range, never null after first select
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -623,25 +623,26 @@ export default function TextEditor() {
     setQuill(q);
   }, []);
 
-  // ── Track Quill selection so AiPanel has it after the editor blurs ──
-  // Quill fires 'selection-change' with (range, oldRange, source).
-  // range is null when the editor loses focus — we keep the last non-null
-  // value so clicking the AI button doesn't wipe out the selection.
+  // ── Track Quill selection — stays live while the AI panel is open ────────
+  // Quill fires selection-change(range, oldRange, source).
+  // When range is null (editor lost focus) we keep the previous value so that
+  // clicking the AI panel button doesn't erase the selection.
+  // When range has length > 0, we update immediately — this makes the AI panel
+  // reflect new text highlighted while the panel is already open.
   useEffect(() => {
     if (!quill) return;
 
     const handleSelectionChange = (range) => {
       if (range) {
-        lastSelectionRef.current = range;
         if (range.length > 0) {
           const text = quill.getText(range.index, range.length).trim();
           setQuillSelection({ index: range.index, length: range.length, text });
         } else {
-          // Cursor placed but nothing selected
+          // Cursor repositioned but nothing selected — clear selection scope
           setQuillSelection(null);
         }
       }
-      // range === null means editor blurred — intentionally keep previous state
+      // range === null → editor blurred; keep previous quillSelection
     };
 
     quill.on('selection-change', handleSelectionChange);
