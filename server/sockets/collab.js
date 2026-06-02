@@ -3,10 +3,12 @@ import Document from '../models/Document.js';
 import User from '../models/User.js';
 import { verifyToken } from '@clerk/backend';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { Redis } from 'ioredis';
 import PresenceService from '../services/presenceService.js';
 
 const defaultValue = "";
+
+/** Enables verbose and PII-containing logs outside production. */
+const isDev = process.env.NODE_ENV !== 'production';
 
 function setupSocket(server, redis) {
   try {
@@ -46,10 +48,10 @@ function setupSocket(server, redis) {
     });
 
     io.on("connection", async socket => {
-      console.log('New connection established:', socket.id, 'Transport:', socket.conn.transport.name);
+      isDev && console.log('New connection established:', socket.id, 'Transport:', socket.conn.transport.name);
 
       const token = socket.handshake.auth.token;
-      console.log('Handshake auth token received:', token ? 'Present' : 'Missing');
+      isDev && console.log('Handshake auth token received:', token ? 'Present' : 'Missing');
 
       let authenticatedUser = null;
 
@@ -73,18 +75,18 @@ function setupSocket(server, redis) {
               email: user.email,
               name: user.name
             };
-            console.log('Authenticated user:', socket.userId, 'MongoDB ID:', socket.mongoUserId);
+            isDev && console.log('Authenticated user:', socket.userId, 'MongoDB ID:', socket.mongoUserId);
           }
         } catch (error) {
           console.error('Auth failed for socket:', socket.id, 'Error:', error.message);
-          console.log('Continuing as guest user');
+          isDev && console.log('Continuing as guest user');
         }
       } else {
-        console.log('No token provided - continuing as guest user');
+        isDev && console.log('No token provided - continuing as guest user');
       }
 
       socket.on("disconnect", async (reason) => {
-        console.log('Disconnected:', socket.id, 'Reason:', reason, 'Transport:', socket.conn.transport.name);
+        isDev && console.log('Disconnected:', socket.id, 'Reason:', reason, 'Transport:', socket.conn.transport.name);
         
         // Remove user from presence tracking via PresenceService
         if (socket.documentId) {
@@ -100,12 +102,12 @@ function setupSocket(server, redis) {
             });
           }
           
-          console.log('User removed from presence for document:', socket.documentId);
+          isDev && console.log('User removed from presence for document:', socket.documentId);
         }
       });
 
       socket.on("get-document", async (documentId) => {
-        console.log('get-document event from:', socket.userId || 'guest');
+        isDev && console.log('get-document event from:', socket.userId || 'guest');
         try {
           const document = await findOrCreateDocument(documentId);
           socket.join(documentId);
@@ -144,7 +146,7 @@ function setupSocket(server, redis) {
           
           // Store role on socket for permission checks
           socket.userRole = userRole;
-          console.log('User role set:', socket.userRole, 'for document:', documentId, 'isPublic:', document.isPublic);
+          isDev && console.log('User role set:', socket.userRole, 'for document:', documentId, 'isPublic:', document.isPublic);
           
           // Add user to presence tracking via PresenceService
           if (authenticatedUser) {
@@ -175,7 +177,7 @@ function setupSocket(server, redis) {
               role: userRole
             });
             
-            console.log('User added to presence:', authenticatedUser.email, 'Total online:', presenceList.length);
+            isDev && console.log('User added to presence:', authenticatedUser.email, 'Total online:', presenceList.length);
           }
           
           // Get current online users for this document via PresenceService
@@ -196,12 +198,12 @@ function setupSocket(server, redis) {
 
       // NEW: Handler to refresh user role when permissions change
       socket.on("refresh-role", async (documentId) => {
-        console.log('refresh-role requested for user:', socket.userId, 'document:', documentId);
+        isDev && console.log('refresh-role requested for user:', socket.userId, 'document:', documentId);
         
         try {
           const document = await Document.findById(documentId);
           if (!document) {
-            console.log('Document not found for role refresh');
+            isDev && console.log('Document not found for role refresh');
             return;
           }
 
@@ -225,7 +227,7 @@ function setupSocket(server, redis) {
           }
           
           socket.userRole = userRole;
-          console.log('Role refreshed to:', socket.userRole);
+          isDev && console.log('Role refreshed to:', socket.userRole);
           
           // Update presence list with new role via PresenceService
           if (socket.documentId && authenticatedUser) {
@@ -239,12 +241,12 @@ function setupSocket(server, redis) {
       socket.on("send-changes", (delta) => {
         // Block viewers from sending changes
         if (socket.userRole === 'viewer') {
-          console.log('Viewer edit attempt blocked:', socket.id);
+          isDev && console.log('Viewer edit attempt blocked:', socket.id);
           socket.emit('error', { message: 'You do not have permission to edit this document' });
           return;
         }
 
-        console.log('send-changes event from:', socket.id, 'Role:', socket.userRole);
+        isDev && console.log('send-changes event from:', socket.id, 'Role:', socket.userRole);
         const rooms = Array.from(socket.rooms).filter(room => room !== socket.id);
         if (rooms.length > 0) {
           socket.broadcast.to(rooms[0]).emit("receive-changes", delta);
@@ -276,7 +278,7 @@ function setupSocket(server, redis) {
 
         // Now check permissions with fresh role
         if (socket.userRole === 'viewer') {
-          console.log('Blocked save from viewer:', socket.id);
+          isDev && console.log('Blocked save from viewer:', socket.id);
           socket.emit('error', { message: 'You do not have permission to save this document' });
           return;
         }
@@ -307,7 +309,7 @@ function setupSocket(server, redis) {
           updates
         });
         
-        console.log('Permission update broadcasted to room:', documentId);
+        isDev && console.log('Permission update broadcasted to room:', documentId);
       });
 
       // Handle token refresh
@@ -333,7 +335,7 @@ function setupSocket(server, redis) {
             };
           }
           
-          console.log('Token refreshed for user:', socket.userId);
+          isDev && console.log('Token refreshed for user:', socket.userId);
         } catch (error) {
           console.error('Token refresh failed:', error.message);
           socket.emit('error', { message: 'Authentication expired. Please refresh the page.' });
@@ -351,21 +353,21 @@ function setupSocket(server, redis) {
 
 async function findOrCreateDocument(id) {
   if (id == null) {
-    console.log('findOrCreateDocument called with null ID - returning null');
+    isDev && console.log('findOrCreateDocument called with null ID - returning null');
     return null;
   }
 
-  console.log('findOrCreateDocument called with ID:', id);
+  isDev && console.log('findOrCreateDocument called with ID:', id);
 
   const document = await Document.findById(id);
   if (document) {
-    console.log('Existing document found:', id);
+    isDev && console.log('Existing document found:', id);
     return document;
   }
 
-  console.log('No document found - creating new with ID:', id);
+  isDev && console.log('No document found - creating new with ID:', id);
   const newDoc = await Document.create({ _id: id, data: defaultValue });
-  console.log('New document created:', newDoc._id);
+  isDev && console.log('New document created:', newDoc._id);
   return newDoc;
 }
 

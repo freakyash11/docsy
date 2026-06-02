@@ -4,7 +4,6 @@ import { Redis } from 'ioredis';  // Keep Redis import for graceful shutdown
 import setupSocket from './sockets/collab.js';
 import connectDB from './config/db.js';
 import 'dotenv/config';
-import cors from 'cors';
 import webhookRoutes from './routes/webhooks.js';
 import authRoutes from './routes/auth.js';
 import documentRoutes from './routes/documentRoutes.js';
@@ -67,6 +66,7 @@ console.log('Socket.IO setup completed');
 app.use('/api/documents', documentRoutes);
 app.use('/api/invite', invitationRoutes);
 app.use('/api/preferences', preferencesRoutes);
+
 // Basic health check route
 app.get('/', (req, res) => {
   res.json({ status: 'Server is running' });
