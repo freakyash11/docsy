@@ -3,13 +3,24 @@
  *
  * Floating side-panel for AI actions in the Docsy editor.
  *
- * Features:
- *   - Tabs: Summarize | Fix Grammar | Change Tone | Translate
- *   - Text scope: selected text OR full document
- *   - Result display with Insert / Copy / Append buttons
- *   - Viewer role: can see results but cannot apply to document
- *   - Loading shimmer, error state, retry countdown for 429
- *   - Reports which model was used and whether result was cached
+ * Selection-aware behavior:
+ * ─────────────────────────
+ * TextEditor tracks the Quill selection via a 'selection-change' listener and
+ * passes a frozen snapshot ({ index, length, text } | null) as `quillSelection`.
+ * Because the snapshot is captured BEFORE the AI button click blurs Quill, this
+ * panel always has the correct selection — even after focus leaves the editor.
+ *
+ * Rules:
+ *   • Grammar / Tone / Translate:
+ *       – selection present → use selected text → Replace Selection on apply
+ *       – no selection      → use full document  → Replace Document on apply
+ *   • Summarize:
+ *       – selection present → summarize selected text
+ *       – no selection      → summarize full document
+ *       – NEVER auto-replaces; always shows in panel; "Append to Document" is the only write action
+ *
+ * Viewer restriction:
+ *   – Viewers may run AI and see results, but all write buttons are hidden/disabled.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -29,15 +40,41 @@ import {
   Info,
   PlusSquare,
   RefreshCw,
+  MousePointer,
+  ScrollText,
 } from 'lucide-react';
 
 // ─── Constants ─────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'summarize', label: 'Summarize',    icon: FileText,    description: 'Generate a bullet-point summary of the document.' },
-  { id: 'grammar',   label: 'Fix Grammar',  icon: CheckCircle, description: 'Correct grammar, spelling, and punctuation errors.' },
-  { id: 'tone',      label: 'Change Tone',  icon: Palette,     description: 'Rewrite the text in a different tone or style.' },
-  { id: 'translate', label: 'Translate',    icon: Languages,   description: 'Translate the text into another language.' },
+  {
+    id: 'summarize',
+    label: 'Summarize',
+    icon: FileText,
+    descSelection: 'Summarize your selected text.',
+    descFull:      'Summarize the full document.',
+  },
+  {
+    id: 'grammar',
+    label: 'Fix Grammar',
+    icon: CheckCircle,
+    descSelection: 'Fix grammar and spelling in your selection.',
+    descFull:      'Fix grammar and spelling across the full document.',
+  },
+  {
+    id: 'tone',
+    label: 'Change Tone',
+    icon: Palette,
+    descSelection: 'Rewrite your selected text in a different tone.',
+    descFull:      'Rewrite the full document in a different tone.',
+  },
+  {
+    id: 'translate',
+    label: 'Translate',
+    icon: Languages,
+    descSelection: 'Translate your selected text.',
+    descFull:      'Translate the full document.',
+  },
 ];
 
 const TONES = [
@@ -103,35 +140,88 @@ function ModelBadge({ modelUsed, isCached }) {
   );
 }
 
+/**
+ * Scope badge shown under the tabs — tells the user what the action will operate on.
+ */
+function ScopeBadge({ hasSelection, selectionText }) {
+  if (hasSelection) {
+    // Show a short preview of the selected text (max 40 chars)
+    const preview = selectionText && selectionText.length > 40
+      ? selectionText.slice(0, 40).trimEnd() + '…'
+      : selectionText;
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <MousePointer className="w-3 h-3 text-docsy-blue flex-shrink-0" />
+        <span className="text-xs text-docsy-blue dark:text-blue-400 font-medium">
+          Selection:
+        </span>
+        <span className="text-xs text-blue-700 dark:text-blue-300 truncate" title={selectionText}>
+          "{preview}"
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+      <ScrollText className="w-3 h-3 text-muted-text flex-shrink-0" />
+      <span className="text-xs text-muted-text dark:text-cool-grey">
+        Full document
+      </span>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────
 
 /**
- * @param {object} props
- * @param {boolean}   props.isOpen
- * @param {Function}  props.onClose
- * @param {object}    props.quill        - Quill instance ref
- * @param {string}    props.userRole     - 'owner' | 'editor' | 'viewer'
+ * @param {object}  props
+ * @param {boolean} props.isOpen
+ * @param {Function} props.onClose
+ * @param {object}  props.quill          - Quill instance (used for apply operations only)
+ * @param {{ index: number, length: number, text: string } | null} props.quillSelection
+ *   Frozen snapshot of the user's last active selection, captured in TextEditor
+ *   BEFORE the click blurs Quill. Null when nothing was selected.
+ * @param {string}  props.userRole       - 'owner' | 'editor' | 'viewer'
  */
-export default function AiPanel({ isOpen, onClose, quill, userRole }) {
+export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole }) {
   const { isLoading, error, result, modelUsed, isCached, retryAfter, run, reset } = useAiActions();
 
-  const [activeTab, setActiveTab]         = useState('summarize');
-  const [selectedTone, setSelectedTone]   = useState('formal');
-  const [targetLanguage, setTargetLang]   = useState('French');
-  const [copied, setCopied]               = useState(false);
-  const [countdown, setCountdown]         = useState(null); // 429 retry countdown
-  const countdownRef                      = useRef(null);
-  const isViewer                          = userRole === 'viewer';
+  const [activeTab, setActiveTab]       = useState('summarize');
+  const [selectedTone, setSelectedTone] = useState('formal');
+  const [targetLanguage, setTargetLang] = useState('French');
+  const [copied, setCopied]             = useState(false);
+  const [countdown, setCountdown]       = useState(null);
+  const countdownRef                    = useRef(null);
+  const isViewer                        = userRole === 'viewer';
 
-  // ── Reset on tab change ──────────────────────────────────────────
+  // Freeze the selection at the moment the AI panel OPENS (or the user changes tab).
+  // This is a second safety net: even if quillSelection updates between opening and
+  // clicking Run, the action uses the scope that was shown to the user.
+  const [frozenSelection, setFrozenSelection] = useState(null);
+
+  // When the panel opens, snapshot the current selection.
+  useEffect(() => {
+    if (isOpen) {
+      setFrozenSelection(quillSelection);
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ↑ Intentionally only depend on isOpen so the scope doesn't shift while the
+  //   panel is visible. quillSelection is read once when the panel opens.
+
+  // Allow the selection to refresh whenever the user switches tabs
+  // (in case they go back to the editor and re-select between tabs).
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
+    setFrozenSelection(quillSelection); // refresh scope on tab switch
     reset();
-  }, [reset]);
+  }, [reset, quillSelection]);
 
-  // ── Reset on panel close ─────────────────────────────────────────
+  // Reset on panel close
   useEffect(() => {
-    if (!isOpen) reset();
+    if (!isOpen) {
+      reset();
+      setFrozenSelection(null);
+    }
   }, [isOpen, reset]);
 
   // ── 429 countdown ────────────────────────────────────────────────
@@ -140,10 +230,7 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
       setCountdown(retryAfter);
       countdownRef.current = setInterval(() => {
         setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownRef.current);
-            return null;
-          }
+          if (prev <= 1) { clearInterval(countdownRef.current); return null; }
           return prev - 1;
         });
       }, 1000);
@@ -151,45 +238,46 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
     return () => clearInterval(countdownRef.current);
   }, [retryAfter]);
 
-  // ── Get text from Quill ─────────────────────────────────────────
-  const getTextFromQuill = useCallback(() => {
-    if (!quill) return '';
-    const selection = quill.getSelection();
-    if (selection && selection.length > 0) {
-      return quill.getText(selection.index, selection.length).trim();
-    }
-    return quill.getText().trim();
-  }, [quill]);
+  // ── Derive input text from frozen scope ──────────────────────────
+  // This is the text that will be sent to the AI.
+  const hasSelection  = Boolean(frozenSelection && frozenSelection.length > 0);
+  const inputText     = hasSelection
+    ? frozenSelection.text
+    : (quill ? quill.getText().trim() : '');
 
   // ── Run the AI action ────────────────────────────────────────────
   const handleRun = useCallback(async () => {
-    const text = getTextFromQuill();
-    if (!text) return;
-
+    if (!inputText) return;
     let options = {};
     if (activeTab === 'tone')      options = { tone: selectedTone };
     if (activeTab === 'translate') options = { targetLanguage };
+    await run(activeTab, inputText, options);
+  }, [activeTab, inputText, run, selectedTone, targetLanguage]);
 
-    await run(activeTab, text, options);
-  }, [activeTab, getTextFromQuill, run, selectedTone, targetLanguage]);
-
-  // ── Apply result to Quill (replace selection or insert at end) ───
+  // ── Apply result back to Quill ───────────────────────────────────
+  //
+  // Grammar / Tone / Translate:
+  //   • Had selection → replace only that range
+  //   • No selection  → replace entire document text
+  //
+  // Summarize:
+  //   • Never auto-replaces — only "Append to Document" is offered.
   const handleInsert = useCallback(() => {
     if (!quill || !result || isViewer) return;
-    const selection = quill.getSelection();
-    if (selection && selection.length > 0) {
-      quill.deleteText(selection.index, selection.length);
-      quill.insertText(selection.index, result);
-      quill.setSelection(selection.index, result.length);
+
+    if (hasSelection && frozenSelection) {
+      // Replace the exact selection range that was used as input
+      quill.deleteText(frozenSelection.index, frozenSelection.length);
+      quill.insertText(frozenSelection.index, result);
+      quill.setSelection(frozenSelection.index, result.length);
     } else {
-      // No selection — replace full document content
+      // No selection — the AI operated on the full document; replace it
       quill.setText(result);
       quill.setSelection(result.length, 0);
     }
     onClose();
-  }, [quill, result, isViewer, onClose]);
+  }, [quill, result, isViewer, hasSelection, frozenSelection, onClose]);
 
-  // ── Append summary to end of document ───────────────────────────
   const handleAppend = useCallback(() => {
     if (!quill || !result || isViewer) return;
     const len = quill.getLength();
@@ -197,23 +285,36 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
     onClose();
   }, [quill, result, isViewer, onClose]);
 
-  // ── Copy result to clipboard ─────────────────────────────────────
+  // ── Copy to clipboard ────────────────────────────────────────────
   const handleCopy = useCallback(async () => {
     if (!result) return;
     try {
       await navigator.clipboard.writeText(result);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for browsers that block clipboard without user gesture
-    }
+    } catch { /* silent fail */ }
   }, [result]);
 
   if (!isOpen) return null;
 
   const activeTabMeta = TABS.find(t => t.id === activeTab);
-  const canRun = quill && !isLoading && !countdown;
+  const canRun   = quill && !isLoading && !countdown && inputText.length > 0;
   const canApply = result && !isViewer;
+
+  // Determine the label for the insert button
+  const insertLabel = hasSelection ? 'Replace Selection' : 'Replace Document';
+
+  // Description shown in the panel body
+  const description = hasSelection
+    ? activeTabMeta?.descSelection
+    : activeTabMeta?.descFull;
+
+  // Run button label
+  const runLabel =
+    activeTab === 'summarize' ? 'Summarize' :
+    activeTab === 'grammar'   ? 'Fix Grammar' :
+    activeTab === 'tone'      ? `Apply ${selectedTone.charAt(0).toUpperCase() + selectedTone.slice(1)} Tone` :
+                                `Translate to ${targetLanguage}`;
 
   return (
     <>
@@ -226,7 +327,7 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
       {/* Panel */}
       <div
         id="ai-panel"
-        className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-[#1A1A1A] border-l border-gray-200 dark:border-gray-800 shadow-2xl z-40 flex flex-col transition-all duration-300"
+        className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-[#1A1A1A] border-l border-gray-200 dark:border-gray-800 shadow-2xl z-40 flex flex-col"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         {/* ── Header ───────────────────────────────────────────── */}
@@ -272,15 +373,15 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
         {/* ── Body ─────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
+          {/* Scope badge — shows selection preview or "Full document" */}
+          <ScopeBadge
+            hasSelection={hasSelection}
+            selectionText={frozenSelection?.text}
+          />
+
           {/* Description */}
           <p className="text-xs text-muted-text dark:text-cool-grey leading-relaxed">
-            {activeTabMeta?.description}
-            {' '}
-            <span className="opacity-70">
-              {quill?.getSelection()?.length > 0
-                ? 'Applies to your selected text.'
-                : 'Applies to the full document.'}
-            </span>
+            {description}
           </p>
 
           {/* ── Action-specific options ────────────────────────── */}
@@ -350,10 +451,7 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                {activeTab === 'summarize' ? 'Summarize' :
-                 activeTab === 'grammar'   ? 'Fix Grammar' :
-                 activeTab === 'tone'      ? `Apply ${selectedTone.charAt(0).toUpperCase() + selectedTone.slice(1)} Tone` :
-                                             `Translate to ${targetLanguage}`}
+                {runLabel}
               </>
             )}
           </button>
@@ -376,11 +474,10 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
           {/* ── Result ─────────────────────────────────────────── */}
           {result && !isLoading && (
             <div className="space-y-3">
-              {/* Result text area */}
-              <div className="relative group">
-                <div className="p-3 bg-input-field dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-ink dark:text-gray-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
-                  {result}
-                </div>
+
+              {/* Result text */}
+              <div className="p-3 bg-input-field dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-ink dark:text-gray-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                {result}
               </div>
 
               {/* Model badge */}
@@ -398,7 +495,7 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
 
-                {/* Insert / Replace — editors and owners only */}
+                {/* Replace selection / Replace document — grammar, tone, translate only */}
                 {canApply && activeTab !== 'summarize' && (
                   <button
                     id="ai-insert-btn"
@@ -406,11 +503,11 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
                   >
                     <PlusSquare className="w-3.5 h-3.5" />
-                    {quill?.getSelection()?.length > 0 ? 'Replace Selection' : 'Replace Document'}
+                    {insertLabel}
                   </button>
                 )}
 
-                {/* Append summary — editors and owners only */}
+                {/* Append summary — summarize only */}
                 {canApply && activeTab === 'summarize' && (
                   <button
                     id="ai-append-btn"
@@ -430,9 +527,12 @@ export default function AiPanel({ isOpen, onClose, quill, userRole }) {
                 </p>
               )}
 
-              {/* Run again */}
+              {/* Try again */}
               <button
-                onClick={reset}
+                onClick={() => {
+                  reset();
+                  setFrozenSelection(quillSelection); // refresh scope for retry
+                }}
                 className="w-full text-xs text-muted-text dark:text-cool-grey hover:text-slate-ink dark:hover:text-white transition-colors py-1"
               >
                 ↺ Try again with different settings
