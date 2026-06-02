@@ -4,8 +4,9 @@ import "quill/dist/quill.snow.css"
 import { io } from "socket.io-client"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAuth, useUser } from '@clerk/clerk-react'
-import { Share2, Globe, Users, Crown, Eye, Keyboard, X } from "lucide-react"
+import { Share2, Globe, Users, Crown, Eye, Keyboard, X, Sparkles } from "lucide-react"
 import ShareModal from "./components/ShareModal"
+import AiPanel from "./components/AiPanel"
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
@@ -257,6 +258,7 @@ export default function TextEditor() {
   const [collaborators, setCollaborators] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -908,6 +910,21 @@ export default function TextEditor() {
         
         <div className="flex items-center gap-3">
           <button
+            id="ai-panel-toggle"
+            onClick={() => setIsAiPanelOpen(v => !v)}
+            title="AI Assistant"
+            className={`p-2 rounded-lg transition-colors group ${
+              isAiPanelOpen
+                ? 'bg-docsy-blue text-white'
+                : 'hover:bg-input-field dark:hover:bg-gray-800'
+            }`}
+          >
+            <Sparkles className={`w-5 h-5 ${
+              isAiPanelOpen ? 'text-white' : 'text-muted-text group-hover:text-slate-ink dark:group-hover:text-white'
+            }`} />
+          </button>
+
+          <button
             onClick={() => setShowShortcuts(true)}
             className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
           >
@@ -951,6 +968,13 @@ export default function TextEditor() {
       <KeyboardShortcutsTooltip 
         isOpen={showShortcuts} 
         onClose={() => setShowShortcuts(false)} 
+      />
+
+      <AiPanel
+        isOpen={isAiPanelOpen}
+        onClose={() => setIsAiPanelOpen(false)}
+        quill={quill}
+        userRole={userRole}
       />
     </div>
   );

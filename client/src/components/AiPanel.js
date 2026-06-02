@@ -1,0 +1,461 @@
+/**
+ * AiPanel.js
+ *
+ * Floating side-panel for AI actions in the Docsy editor.
+ *
+ * Features:
+ *   - Tabs: Summarize | Fix Grammar | Change Tone | Translate
+ *   - Text scope: selected text OR full document
+ *   - Result display with Insert / Copy / Append buttons
+ *   - Viewer role: can see results but cannot apply to document
+ *   - Loading shimmer, error state, retry countdown for 429
+ *   - Reports which model was used and whether result was cached
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAiActions } from '../hooks/useAiActions';
+import {
+  X,
+  Sparkles,
+  FileText,
+  CheckCircle,
+  Languages,
+  Palette,
+  Copy,
+  Check,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
+  Info,
+  PlusSquare,
+  RefreshCw,
+} from 'lucide-react';
+
+// ─── Constants ─────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'summarize', label: 'Summarize',    icon: FileText,    description: 'Generate a bullet-point summary of the document.' },
+  { id: 'grammar',   label: 'Fix Grammar',  icon: CheckCircle, description: 'Correct grammar, spelling, and punctuation errors.' },
+  { id: 'tone',      label: 'Change Tone',  icon: Palette,     description: 'Rewrite the text in a different tone or style.' },
+  { id: 'translate', label: 'Translate',    icon: Languages,   description: 'Translate the text into another language.' },
+];
+
+const TONES = [
+  { value: 'formal',       label: 'Formal'       },
+  { value: 'casual',       label: 'Casual'       },
+  { value: 'professional', label: 'Professional' },
+  { value: 'friendly',     label: 'Friendly'     },
+  { value: 'persuasive',   label: 'Persuasive'   },
+  { value: 'empathetic',   label: 'Empathetic'   },
+];
+
+const LANGUAGES = [
+  'French', 'Spanish', 'German', 'Italian', 'Portuguese', 'Dutch',
+  'Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'Korean',
+  'Arabic', 'Hindi', 'Russian', 'Polish', 'Turkish', 'Swedish',
+  'Danish', 'Norwegian', 'Finnish', 'Greek',
+];
+
+// ─── Sub-components ────────────────────────────────────────────────
+
+function TabButton({ tab, isActive, onClick }) {
+  const Icon = tab.icon;
+  return (
+    <button
+      id={`ai-tab-${tab.id}`}
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+        isActive
+          ? 'bg-docsy-blue text-white shadow-sm'
+          : 'text-muted-text dark:text-cool-grey hover:bg-input-field dark:hover:bg-gray-800 hover:text-slate-ink dark:hover:text-white'
+      }`}
+    >
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      {tab.label}
+    </button>
+  );
+}
+
+function Shimmer() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      {[100, 85, 92, 70, 88].map((w, i) => (
+        <div
+          key={i}
+          className="h-3 bg-gray-200 dark:bg-gray-700 rounded"
+          style={{ width: `${w}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ModelBadge({ modelUsed, isCached }) {
+  const shortModel = modelUsed?.split('/').slice(-1)[0] ?? modelUsed ?? 'unknown';
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-text dark:text-cool-grey">
+      <Info className="w-3 h-3 flex-shrink-0" />
+      <span>
+        {isCached ? '⚡ Cached · ' : ''}
+        {shortModel}
+      </span>
+    </div>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────
+
+/**
+ * @param {object} props
+ * @param {boolean}   props.isOpen
+ * @param {Function}  props.onClose
+ * @param {object}    props.quill        - Quill instance ref
+ * @param {string}    props.userRole     - 'owner' | 'editor' | 'viewer'
+ */
+export default function AiPanel({ isOpen, onClose, quill, userRole }) {
+  const { isLoading, error, result, modelUsed, isCached, retryAfter, run, reset } = useAiActions();
+
+  const [activeTab, setActiveTab]         = useState('summarize');
+  const [selectedTone, setSelectedTone]   = useState('formal');
+  const [targetLanguage, setTargetLang]   = useState('French');
+  const [copied, setCopied]               = useState(false);
+  const [countdown, setCountdown]         = useState(null); // 429 retry countdown
+  const countdownRef                      = useRef(null);
+  const isViewer                          = userRole === 'viewer';
+
+  // ── Reset on tab change ──────────────────────────────────────────
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    reset();
+  }, [reset]);
+
+  // ── Reset on panel close ─────────────────────────────────────────
+  useEffect(() => {
+    if (!isOpen) reset();
+  }, [isOpen, reset]);
+
+  // ── 429 countdown ────────────────────────────────────────────────
+  useEffect(() => {
+    if (retryAfter != null && retryAfter > 0) {
+      setCountdown(retryAfter);
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(countdownRef.current);
+  }, [retryAfter]);
+
+  // ── Get text from Quill ─────────────────────────────────────────
+  const getTextFromQuill = useCallback(() => {
+    if (!quill) return '';
+    const selection = quill.getSelection();
+    if (selection && selection.length > 0) {
+      return quill.getText(selection.index, selection.length).trim();
+    }
+    return quill.getText().trim();
+  }, [quill]);
+
+  // ── Run the AI action ────────────────────────────────────────────
+  const handleRun = useCallback(async () => {
+    const text = getTextFromQuill();
+    if (!text) return;
+
+    let options = {};
+    if (activeTab === 'tone')      options = { tone: selectedTone };
+    if (activeTab === 'translate') options = { targetLanguage };
+
+    await run(activeTab, text, options);
+  }, [activeTab, getTextFromQuill, run, selectedTone, targetLanguage]);
+
+  // ── Apply result to Quill (replace selection or insert at end) ───
+  const handleInsert = useCallback(() => {
+    if (!quill || !result || isViewer) return;
+    const selection = quill.getSelection();
+    if (selection && selection.length > 0) {
+      quill.deleteText(selection.index, selection.length);
+      quill.insertText(selection.index, result);
+      quill.setSelection(selection.index, result.length);
+    } else {
+      // No selection — replace full document content
+      quill.setText(result);
+      quill.setSelection(result.length, 0);
+    }
+    onClose();
+  }, [quill, result, isViewer, onClose]);
+
+  // ── Append summary to end of document ───────────────────────────
+  const handleAppend = useCallback(() => {
+    if (!quill || !result || isViewer) return;
+    const len = quill.getLength();
+    quill.insertText(len - 1, `\n\nSummary:\n${result}`);
+    onClose();
+  }, [quill, result, isViewer, onClose]);
+
+  // ── Copy result to clipboard ─────────────────────────────────────
+  const handleCopy = useCallback(async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for browsers that block clipboard without user gesture
+    }
+  }, [result]);
+
+  if (!isOpen) return null;
+
+  const activeTabMeta = TABS.find(t => t.id === activeTab);
+  const canRun = quill && !isLoading && !countdown;
+  const canApply = result && !isViewer;
+
+  return (
+    <>
+      {/* Backdrop (mobile) */}
+      <div
+        className="fixed inset-0 bg-black/20 dark:bg-black/40 z-30 lg:hidden"
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div
+        id="ai-panel"
+        className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-[#1A1A1A] border-l border-gray-200 dark:border-gray-800 shadow-2xl z-40 flex flex-col transition-all duration-300"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-docsy-blue flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-ink dark:text-white leading-tight">
+                AI Assistant
+              </h2>
+              {isViewer && (
+                <p className="text-xs text-muted-text dark:text-cool-grey">
+                  View only — editor access needed to apply
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            id="ai-panel-close"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-input-field dark:hover:bg-gray-800 text-muted-text hover:text-slate-ink dark:hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* ── Tabs ─────────────────────────────────────────────── */}
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
+          <div className="flex gap-1.5">
+            {TABS.map(tab => (
+              <TabButton
+                key={tab.id}
+                tab={tab}
+                isActive={activeTab === tab.id}
+                onClick={() => handleTabChange(tab.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Body ─────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+
+          {/* Description */}
+          <p className="text-xs text-muted-text dark:text-cool-grey leading-relaxed">
+            {activeTabMeta?.description}
+            {' '}
+            <span className="opacity-70">
+              {quill?.getSelection()?.length > 0
+                ? 'Applies to your selected text.'
+                : 'Applies to the full document.'}
+            </span>
+          </p>
+
+          {/* ── Action-specific options ────────────────────────── */}
+          {activeTab === 'tone' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-ink dark:text-white">
+                Tone
+              </label>
+              <div className="relative">
+                <select
+                  id="ai-tone-select"
+                  value={selectedTone}
+                  onChange={e => setSelectedTone(e.target.value)}
+                  className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
+                >
+                  {TONES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'translate' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-ink dark:text-white">
+                Target Language
+              </label>
+              <div className="relative">
+                <select
+                  id="ai-language-select"
+                  value={targetLanguage}
+                  onChange={e => setTargetLang(e.target.value)}
+                  className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
+                >
+                  {LANGUAGES.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* ── Run button ─────────────────────────────────────── */}
+          <button
+            id={`ai-run-${activeTab}`}
+            onClick={handleRun}
+            disabled={!canRun}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              canRun
+                ? 'bg-docsy-blue text-white hover:opacity-90 shadow-sm hover:shadow-md active:scale-[0.98]'
+                : 'bg-gray-100 dark:bg-gray-800 text-muted-text dark:text-cool-grey cursor-not-allowed'
+            }`}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing…
+              </>
+            ) : countdown ? (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Retry in {countdown}s
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {activeTab === 'summarize' ? 'Summarize' :
+                 activeTab === 'grammar'   ? 'Fix Grammar' :
+                 activeTab === 'tone'      ? `Apply ${selectedTone.charAt(0).toUpperCase() + selectedTone.slice(1)} Tone` :
+                                             `Translate to ${targetLanguage}`}
+              </>
+            )}
+          </button>
+
+          {/* ── Error state ────────────────────────────────────── */}
+          {error && (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">{error}</p>
+            </div>
+          )}
+
+          {/* ── Loading shimmer ────────────────────────────────── */}
+          {isLoading && (
+            <div className="p-3 bg-input-field dark:bg-gray-800/50 rounded-lg">
+              <Shimmer />
+            </div>
+          )}
+
+          {/* ── Result ─────────────────────────────────────────── */}
+          {result && !isLoading && (
+            <div className="space-y-3">
+              {/* Result text area */}
+              <div className="relative group">
+                <div className="p-3 bg-input-field dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-ink dark:text-gray-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  {result}
+                </div>
+              </div>
+
+              {/* Model badge */}
+              {modelUsed && <ModelBadge modelUsed={modelUsed} isCached={isCached} />}
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                {/* Copy */}
+                <button
+                  id="ai-copy-btn"
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-muted-text dark:text-cool-grey hover:bg-input-field dark:hover:bg-gray-800 hover:text-slate-ink dark:hover:text-white transition-all"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-soft-green" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+
+                {/* Insert / Replace — editors and owners only */}
+                {canApply && activeTab !== 'summarize' && (
+                  <button
+                    id="ai-insert-btn"
+                    onClick={handleInsert}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
+                  >
+                    <PlusSquare className="w-3.5 h-3.5" />
+                    {quill?.getSelection()?.length > 0 ? 'Replace Selection' : 'Replace Document'}
+                  </button>
+                )}
+
+                {/* Append summary — editors and owners only */}
+                {canApply && activeTab === 'summarize' && (
+                  <button
+                    id="ai-append-btn"
+                    onClick={handleAppend}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
+                  >
+                    <PlusSquare className="w-3.5 h-3.5" />
+                    Append to Document
+                  </button>
+                )}
+              </div>
+
+              {/* Viewer notice */}
+              {isViewer && (
+                <p className="text-xs text-muted-text dark:text-cool-grey text-center">
+                  You need editor access to apply AI results.
+                </p>
+              )}
+
+              {/* Run again */}
+              <button
+                onClick={reset}
+                className="w-full text-xs text-muted-text dark:text-cool-grey hover:text-slate-ink dark:hover:text-white transition-colors py-1"
+              >
+                ↺ Try again with different settings
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-xs text-muted-text dark:text-cool-grey text-center">
+            Powered by{' '}
+            <a
+              href="https://openrouter.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-docsy-blue hover:underline"
+            >
+              OpenRouter
+            </a>
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}

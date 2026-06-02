@@ -10,6 +10,7 @@ import documentRoutes from './routes/documentRoutes.js';
 import invitationRoutes from './routes/invitationRoutes.js';
 import { emailService } from './services/emailService.js';
 import preferencesRoutes from './routes/preferences.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api/auth', authRoutes);
 
 // Redis Setup (for sharing Socket.IO sessions/SIDs)
 const redis = new Redis(process.env.REDIS_URL);  // REDIS_URL from Render env vars
+app.set('redis', redis); // Make redis accessible to middleware via req.app.get('redis')
 
 // Socket.IO Setup - now handled entirely in collab.js
 const io = setupSocket(server, redis);  // Pass both server and redis instance
@@ -66,6 +68,7 @@ console.log('Socket.IO setup completed');
 app.use('/api/documents', documentRoutes);
 app.use('/api/invite', invitationRoutes);
 app.use('/api/preferences', preferencesRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Basic health check route
 app.get('/', (req, res) => {
