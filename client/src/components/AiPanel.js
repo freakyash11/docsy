@@ -24,6 +24,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Quill from 'quill';
 import { useAiActions } from '../hooks/useAiActions';
 import {
   X,
@@ -251,43 +252,58 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   // ── Apply result back to Quill ───────────────────────────────────
   //
   // Grammar / Tone / Translate:
-  //   • Had selection → replace only that range
+  //   • Had selection → replace only that selection range (single atomic delta)
   //   • No selection  → replace entire document text
   //
   // Summarize:
   //   • Never auto-replaces — only "Append to Document" is offered.
   //
-  // Bug 2 fix: all Quill mutations use source='user' so that Quill fires
-  // text-change with source='user'. TextEditor's text-change handler
-  // checks `if (source !== "user") return` — without this fix, API-sourced
-  // changes were silently ignored by the save/broadcast pipeline.
+  // Collaboration correctness:
+  //   All mutations use a SINGLE Quill operation so that exactly ONE
+  //   text-change event fires, emitting ONE send-changes socket message.
+  //   Using two separate calls (deleteText + insertText) would emit two
+  //   independent deltas which collaborators must apply sequentially.
+  //   Under any network latency this creates OT ordering issues — the
+  //   delete shifts positions and the subsequent insert arrives with
+  //   stale indices. A single composed Delta is always atomic.
   const handleInsert = useCallback(() => {
-    if (!quill || !result || isViewer) return;
+    if (!quill || !result || isViewer || isGuest) return;
 
     if (hasSelection && quillSelection) {
-      // Replace the exact selection range that was active when Run was clicked.
-      // source='user' ensures text-change fires with source='user', which makes
-      // TextEditor's listener set hasUnsavedChanges=true and broadcast the delta.
-      quill.deleteText(quillSelection.index, quillSelection.length, 'user');
-      quill.insertText(quillSelection.index, result, 'user');
-      quill.setSelection(quillSelection.index, result.length);
+      // Build a single atomic Delta:
+      //   retain(index) → skip to the selection start
+      //   delete(length) → remove the selected text
+      //   insert(result) → place the AI result
+      // This fires exactly ONE text-change(source='user') event,
+      // which emits ONE send-changes and marks ONE hasUnsavedChanges.
+      const Delta = Quill.import('delta');
+      const delta = new Delta()
+        .retain(quillSelection.index)
+        .delete(quillSelection.length)
+        .insert(result);
+      quill.updateContents(delta, 'user');
+      quill.setSelection(quillSelection.index + result.length, 0);
     } else {
       // No selection — the AI operated on the full document; replace it.
-      // source='user' for the same reason.
+      // setText → setContents → fires one text-change with the full delta.
       quill.setText(result, 'user');
       quill.setSelection(result.length, 0);
     }
     onClose();
-  }, [quill, result, isViewer, hasSelection, quillSelection, onClose]);
+  }, [quill, result, isViewer, isGuest, hasSelection, quillSelection, onClose]);
 
   const handleAppend = useCallback(() => {
-    if (!quill || !result || isViewer) return;
+    if (!quill || !result || isViewer || isGuest) return;
+    // Single atomic Delta: retain to end-of-document, insert the summary block.
+    // Using a Delta instead of insertText(len-1, ...) is explicit about position.
+    const Delta = Quill.import('delta');
     const len = quill.getLength();
-    // Use source='user' so this append enters the autosave + collab pipeline
-    // exactly like a normal user keystroke would.
-    quill.insertText(len - 1, `\n\nSummary:\n${result}`, 'user');
+    const delta = new Delta()
+      .retain(len - 1)           // keep existing content
+      .insert(`\n\nSummary:\n${result}`); // append
+    quill.updateContents(delta, 'user');
     onClose();
-  }, [quill, result, isViewer, onClose]);
+  }, [quill, result, isViewer, isGuest, onClose]);
 
   // ── Copy to clipboard ────────────────────────────────────────────
   const handleCopy = useCallback(async () => {
