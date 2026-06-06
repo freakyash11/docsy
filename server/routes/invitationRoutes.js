@@ -10,7 +10,7 @@ import {
   cleanupExpiredInvitations,
   updateDocumentPermissions  
 } from '../controllers/invitationController.js';
-import authMiddleware from '../middleware/authmiddleware.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 router.post('/:id/invite', authMiddleware, createInvitation);
