@@ -2,7 +2,7 @@ import Invitation from '../models/Invitation.js';
 import Document from '../models/Document.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
-import { emailService } from '../services/emailService.js';
+import { addEmailJob } from '../jobs/index.js';
 import { clerkClient } from '@clerk/clerk-sdk-node';
 
 const inviteRateLimits = new Map();
@@ -147,7 +147,10 @@ export const createInvitation = async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const inviteLink = `${frontendUrl}/invite/${plainToken}`;
 
-    await emailService.sendEmail({
+    // Queue email delivery — do NOT await so the API response is not blocked.
+    // If email fails, BullMQ will retry up to 3 times with exponential backoff.
+    // Invitation creation is never rolled back due to email failure.
+    const emailJob = await addEmailJob('invite', {
       to: email,
       subject: `${user.name} invited you to collaborate on ${document.title}`,
       template: 'invitation',
@@ -155,8 +158,16 @@ export const createInvitation = async (req, res) => {
         senderName: user.name,
         documentName: document.title,
         invitationLink: inviteLink,
-        recipientEmail: email
+        recipientEmail: email,
+        role: invitation.role
       }
+    });
+
+    console.log('[createInvitation] Email job queued', {
+      jobId: emailJob.id,
+      recipient: email,
+      documentId,
+      invitationId: invitation._id
     });
 
     res.status(201).json({
@@ -680,8 +691,10 @@ export const resendInvitation = async (req, res) => {
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const inviteLink = `${frontendUrl}/accept-invite?token=${plainToken}`;
-    
-    await emailService.sendEmail({
+
+    // Queue resend email delivery — do NOT await so the API response is not blocked.
+    // If email fails, BullMQ will retry up to 3 times with exponential backoff.
+    const resendEmailJob = await addEmailJob('invite-resend', {
       to: invitation.email,
       subject: `${user.name} sent you another invitation to collaborate on ${document.title}`,
       template: 'invitation',
@@ -690,15 +703,18 @@ export const resendInvitation = async (req, res) => {
         documentName: document.title,
         invitationLink: inviteLink,
         recipientEmail: invitation.email,
-        companyName: process.env.COMPANY_NAME || 'Our Company',
+        role: invitation.role,
+        companyName: process.env.COMPANY_NAME || 'Docsy',
         companyAddress: process.env.COMPANY_ADDRESS || ''
       }
     });
 
-    console.log('📧 Invitation resent:', {
-      oldId: oldInvitation._id,
-      newId: invitation._id,
-      email: invitation.email
+    console.log('[resendInvitation] Email job queued', {
+      jobId: resendEmailJob.id,
+      recipient: invitation.email,
+      documentId: document._id,
+      oldInvitationId: oldInvitation._id,
+      newInvitationId: invitation._id
     });
     
     res.json({

@@ -190,8 +190,9 @@ function ScopeBadge({ hasSelection, selectionText }) {
  *   When false the entire interactive body is replaced by a sign-in gate.
  *   AI generation is ONLY allowed for signed-in users; guests may not execute
  *   AI requests regardless of document visibility.
+ * @param {Function} props.onApply       - Callback invoked after AI edits are applied to the document.
  */
-export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole, isSignedIn = false }) {
+export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole, isSignedIn = false, onApply }) {
   const { isLoading, error, result, modelUsed, isCached, retryAfter, run, reset } = useAiActions();
 
   const [activeTab, setActiveTab]       = useState('summarize');
@@ -289,8 +290,9 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
       quill.setText(result, 'user');
       quill.setSelection(result.length, 0);
     }
+    if (onApply) onApply();
     onClose();
-  }, [quill, result, isViewer, isGuest, hasSelection, quillSelection, onClose]);
+  }, [quill, result, isViewer, isGuest, hasSelection, quillSelection, onClose, onApply]);
 
   const handleAppend = useCallback(() => {
     if (!quill || !result || isViewer || isGuest) return;
@@ -302,8 +304,9 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
       .retain(len - 1)           // keep existing content
       .insert(`\n\nSummary:\n${result}`); // append
     quill.updateContents(delta, 'user');
+    if (onApply) onApply();
     onClose();
-  }, [quill, result, isViewer, isGuest, onClose]);
+  }, [quill, result, isViewer, isGuest, onClose, onApply]);
 
   // ── Copy to clipboard ────────────────────────────────────────────
   const handleCopy = useCallback(async () => {

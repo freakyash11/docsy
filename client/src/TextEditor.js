@@ -4,9 +4,10 @@ import "quill/dist/quill.snow.css"
 import { io } from "socket.io-client"
 import { useParams, useNavigate } from "react-router-dom"
 import { useAuth, useUser } from '@clerk/clerk-react'
-import { Share2, Globe, Users, Crown, Eye, Keyboard, X, Sparkles } from "lucide-react"
+import { Share2, Globe, Users, Crown, Eye, Keyboard, X, Sparkles, History } from "lucide-react"
 import ShareModal from "./components/ShareModal"
 import AiPanel from "./components/AiPanel"
+import VersionHistory from "./components/VersionHistory"
 
 const SAVE_INTERVAL_MS = 2000
 const TOOLBAR_OPTIONS = [
@@ -263,6 +264,8 @@ export default function TextEditor() {
   // Preserves the last real range across blur events; updates immediately when
   // the user highlights new text (even while the AI panel is open).
   const [quillSelection, setQuillSelection] = useState(null); // { index, length, text } | null
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const hasChangesForSnapshot = useRef(false);
 
   const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
@@ -586,6 +589,66 @@ export default function TextEditor() {
     };
   }, [socket, quill, userRole]);
 
+  // Periodic Snapshots every 5 minutes
+  useEffect(() => {
+    if (socket == null || quill == null || userRole === 'viewer' || !userRole) return;
+    const interval = setInterval(() => {
+      if (hasChangesForSnapshot.current) {
+        triggerSnapshot('periodic', 'Autosaved Snapshot');
+        hasChangesForSnapshot.current = false;
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [socket, quill, userRole]);
+
+  const triggerSnapshot = async (source, label = null) => {
+    try {
+      const token = await getToken();
+      await fetch(`${backendUrl}/api/documents/${documentId}/versions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ triggerSource: source, label })
+      });
+    } catch (err) {
+      console.error('Failed to trigger snapshot:', err);
+    }
+  };
+
+  const handleAiApply = () => {
+    // Force a save to ensure DB is up to date, then trigger AI snapshot
+    if (quill && socket) {
+      const currentContent = quill.getContents();
+      setSaveStatus("saving");
+      socket.emit("save-document", currentContent);
+      lastSavedContent.current = currentContent;
+      
+      setTimeout(() => {
+        setSaveStatus("saved");
+        setLastSaved(new Date().toISOString());
+        triggerSnapshot('ai-edit', 'AI Assisted Edit');
+        setTimeout(() => setSaveStatus(""), 2000);
+      }, 500);
+    }
+  };
+
+  const handleRestore = async (versionId, versionNumber) => {
+    if (!window.confirm(`Are you sure you want to restore Version ${versionNumber}?`)) return;
+    try {
+      const token = await getToken();
+      const res = await fetch(`${backendUrl}/api/documents/${documentId}/restore/${versionId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to restore version');
+      setIsVersionHistoryOpen(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   useEffect(() => {
     if (socket == null || quill == null) return;
 
@@ -600,6 +663,23 @@ export default function TextEditor() {
   }, [socket, quill]);
 
   useEffect(() => {
+    if (socket == null || quill == null) return;
+
+    const handler = (data) => {
+      quill.setContents(data.data);
+      quill.history.clear(); // Clear history so they can't Ctrl+Z out of a restore
+      if (data.title) setTitle(data.title);
+      lastSavedContent.current = data.data;
+      alert(`Document restored to Version ${data.versionNumber}`);
+    };
+    socket.on("document-restored", handler);
+
+    return () => {
+      socket.off("document-restored", handler);
+    };
+  }, [socket, quill]);
+
+  useEffect(() => {
     if (socket == null || quill == null || userRole === 'viewer' || !userRole) return;
 
     const handler = (delta, oldDelta, source) => {
@@ -607,6 +687,7 @@ export default function TextEditor() {
       
       // Mark that we have unsaved changes
       hasUnsavedChanges.current = true;
+      hasChangesForSnapshot.current = true;
       
       socket.emit("send-changes", delta);
     };
@@ -966,7 +1047,16 @@ export default function TextEditor() {
           </button>
 
           <button
+            onClick={() => setIsVersionHistoryOpen(true)}
+            title="Version History"
+            className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
+          >
+            <History className="w-5 h-5 text-muted-text group-hover:text-slate-ink dark:group-hover:text-white" />
+          </button>
+
+          <button
             onClick={() => setShowShortcuts(true)}
+            title="Keyboard Shortcuts"
             className="p-2 hover:bg-input-field dark:hover:bg-gray-800 rounded-lg transition-colors group"
           >
             <Keyboard className="w-5 h-5 text-muted-text group-hover:text-slate-ink dark:group-hover:text-white" />
@@ -1018,6 +1108,17 @@ export default function TextEditor() {
         quillSelection={quillSelection}
         userRole={userRole}
         isSignedIn={isSignedIn}
+        onApply={handleAiApply}
+      />
+
+      <VersionHistory
+        isOpen={isVersionHistoryOpen}
+        onClose={() => setIsVersionHistoryOpen(false)}
+        documentId={documentId}
+        getToken={getToken}
+        backendUrl={backendUrl}
+        onRestore={handleRestore}
+        userRole={userRole}
       />
     </div>
   );
