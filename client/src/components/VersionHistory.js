@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, X, Clock, User, FileText, RotateCcw, AlertTriangle } from 'lucide-react';
+import { History, X, Clock, User, FileText, RotateCcw, AlertTriangle, Sparkles } from 'lucide-react';
 
 // Formatter for dates
 function formatDate(dateString) {
