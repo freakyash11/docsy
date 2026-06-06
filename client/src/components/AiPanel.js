@@ -247,17 +247,25 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   //
   // Summarize:
   //   • Never auto-replaces — only "Append to Document" is offered.
+  //
+  // Bug 2 fix: all Quill mutations use source='user' so that Quill fires
+  // text-change with source='user'. TextEditor's text-change handler
+  // checks `if (source !== "user") return` — without this fix, API-sourced
+  // changes were silently ignored by the save/broadcast pipeline.
   const handleInsert = useCallback(() => {
     if (!quill || !result || isViewer) return;
 
     if (hasSelection && quillSelection) {
-      // Replace the exact selection range that was active when Run was clicked
-      quill.deleteText(quillSelection.index, quillSelection.length);
-      quill.insertText(quillSelection.index, result);
+      // Replace the exact selection range that was active when Run was clicked.
+      // source='user' ensures text-change fires with source='user', which makes
+      // TextEditor's listener set hasUnsavedChanges=true and broadcast the delta.
+      quill.deleteText(quillSelection.index, quillSelection.length, 'user');
+      quill.insertText(quillSelection.index, result, 'user');
       quill.setSelection(quillSelection.index, result.length);
     } else {
-      // No selection — the AI operated on the full document; replace it
-      quill.setText(result);
+      // No selection — the AI operated on the full document; replace it.
+      // source='user' for the same reason.
+      quill.setText(result, 'user');
       quill.setSelection(result.length, 0);
     }
     onClose();
@@ -266,7 +274,9 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   const handleAppend = useCallback(() => {
     if (!quill || !result || isViewer) return;
     const len = quill.getLength();
-    quill.insertText(len - 1, `\n\nSummary:\n${result}`);
+    // Use source='user' so this append enters the autosave + collab pipeline
+    // exactly like a normal user keystroke would.
+    quill.insertText(len - 1, `\n\nSummary:\n${result}`, 'user');
     onClose();
   }, [quill, result, isViewer, onClose]);
 

@@ -421,7 +421,16 @@ export default function TextEditor() {
       setUserRole(data.role);
       setIsPublicDoc(data.isPublic || false);
       quill.setContents(data.data || []);
-      
+
+      // ── Bug 1 fix ────────────────────────────────────────────────────
+      // Clear undo history immediately after loading the document.
+      // Without this, Quill records the setContents() call (and the
+      // earlier "Loading..." setText if it existed) as undoable steps.
+      // Pressing Ctrl+Z would then revert to an empty/loading state
+      // which the autosave interval would persist to MongoDB.
+      quill.history.clear();
+      // ─────────────────────────────────────────────────────────────────
+
       // Store initial content for comparison
       lastSavedContent.current = data.data || [];
       
@@ -618,8 +627,10 @@ export default function TextEditor() {
       theme: "snow",
       modules: { toolbar: TOOLBAR_OPTIONS },
     });
+    // Keep editor disabled until the document is loaded from the server.
+    // Do NOT call setText/setContents here — any content written before the
+    // real document arrives would pollute Quill's undo history.
     q.disable();
-    q.setText("Loading...");
     setQuill(q);
   }, []);
 
