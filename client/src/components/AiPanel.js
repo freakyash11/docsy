@@ -42,6 +42,8 @@ import {
   RefreshCw,
   MousePointer,
   ScrollText,
+  LogIn,
+  Lock,
 } from 'lucide-react';
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -183,8 +185,12 @@ function ScopeBadge({ hasSelection, selectionText }) {
  *   listener — preserves the last real selection across blur events, and updates
  *   immediately when the user highlights new text.
  * @param {string}  props.userRole       - 'owner' | 'editor' | 'viewer'
+ * @param {boolean} props.isSignedIn     - false for guests viewing a public document.
+ *   When false the entire interactive body is replaced by a sign-in gate.
+ *   AI generation is ONLY allowed for signed-in users; guests may not execute
+ *   AI requests regardless of document visibility.
  */
-export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole }) {
+export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRole, isSignedIn = false }) {
   const { isLoading, error, result, modelUsed, isCached, retryAfter, run, reset } = useAiActions();
 
   const [activeTab, setActiveTab]       = useState('summarize');
@@ -194,6 +200,9 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   const [countdown, setCountdown]       = useState(null);
   const countdownRef                    = useRef(null);
   const isViewer                        = userRole === 'viewer';
+  // Guests are unauthenticated users viewing a public document.
+  // They must not be able to execute AI requests at all.
+  const isGuest                         = !isSignedIn;
 
 
   // Allow the selection to refresh whenever the user switches tabs.
@@ -293,8 +302,10 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
   if (!isOpen) return null;
 
   const activeTabMeta = TABS.find(t => t.id === activeTab);
-  const canRun   = quill && !isLoading && !countdown && inputText.length > 0;
-  const canApply = result && !isViewer;
+  // canRun: editor/owner signed-in users with text to process.
+  // Guests and loading/countdown states all disable the button.
+  const canRun   = !isGuest && quill && !isLoading && !countdown && inputText.length > 0;
+  const canApply = result && !isViewer && !isGuest;
 
   // Determine the label for the insert button
   const insertLabel = hasSelection ? 'Replace Selection' : 'Replace Document';
@@ -352,186 +363,214 @@ export default function AiPanel({ isOpen, onClose, quill, quillSelection, userRo
         </div>
 
         {/* ── Tabs ─────────────────────────────────────────────── */}
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
-          <div className="flex gap-1.5">
-            {TABS.map(tab => (
-              <TabButton
-                key={tab.id}
-                tab={tab}
-                isActive={activeTab === tab.id}
-                onClick={() => handleTabChange(tab.id)}
-              />
-            ))}
+        {!isGuest && (
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
+            <div className="flex gap-1.5">
+              {TABS.map(tab => (
+                <TabButton
+                  key={tab.id}
+                  tab={tab}
+                  isActive={activeTab === tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Body ─────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-
-          {/* Scope badge — shows live selection preview or "Full document" */}
-          <ScopeBadge
-            hasSelection={hasSelection}
-            selectionText={quillSelection?.text}
-          />
-
-          {/* Description */}
-          <p className="text-xs text-muted-text dark:text-cool-grey leading-relaxed">
-            {description}
-          </p>
-
-          {/* ── Action-specific options ────────────────────────── */}
-          {activeTab === 'tone' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-ink dark:text-white">
-                Tone
-              </label>
-              <div className="relative">
-                <select
-                  id="ai-tone-select"
-                  value={selectedTone}
-                  onChange={e => setSelectedTone(e.target.value)}
-                  className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
-                >
-                  {TONES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
-              </div>
+        {isGuest ? (
+          /* ── Guest gate: sign-in required to use AI ──────────── */
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 gap-5 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Lock className="w-7 h-7 text-muted-text dark:text-cool-grey" />
             </div>
-          )}
-
-          {activeTab === 'translate' && (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-ink dark:text-white">
-                Target Language
-              </label>
-              <div className="relative">
-                <select
-                  id="ai-language-select"
-                  value={targetLanguage}
-                  onChange={e => setTargetLang(e.target.value)}
-                  className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
-                >
-                  {LANGUAGES.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
-              </div>
+              <p className="text-sm font-semibold text-slate-ink dark:text-white">
+                Sign in to use AI tools
+              </p>
+              <p className="text-xs text-muted-text dark:text-cool-grey leading-relaxed">
+                AI features are available to signed-in users only.
+                Public document viewing is not affected.
+              </p>
             </div>
-          )}
+            <a
+              href="/auth"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-docsy-blue text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity shadow-sm"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign in
+            </a>
+          </div>
+        ) : (
+          /* ── Normal body for authenticated users ──────────────── */
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
-          {/* ── Run button ─────────────────────────────────────── */}
-          <button
-            id={`ai-run-${activeTab}`}
-            onClick={handleRun}
-            disabled={!canRun}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              canRun
-                ? 'bg-docsy-blue text-white hover:opacity-90 shadow-sm hover:shadow-md active:scale-[0.98]'
-                : 'bg-gray-100 dark:bg-gray-800 text-muted-text dark:text-cool-grey cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Processing…
-              </>
-            ) : countdown ? (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Retry in {countdown}s
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                {runLabel}
-              </>
+            {/* Scope badge — shows live selection preview or "Full document" */}
+            <ScopeBadge
+              hasSelection={hasSelection}
+              selectionText={quillSelection?.text}
+            />
+
+            {/* Description */}
+            <p className="text-xs text-muted-text dark:text-cool-grey leading-relaxed">
+              {description}
+            </p>
+
+            {/* ── Action-specific options ────────────────────────── */}
+            {activeTab === 'tone' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-ink dark:text-white">
+                  Tone
+                </label>
+                <div className="relative">
+                  <select
+                    id="ai-tone-select"
+                    value={selectedTone}
+                    onChange={e => setSelectedTone(e.target.value)}
+                    className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
+                  >
+                    {TONES.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
+                </div>
+              </div>
             )}
-          </button>
 
-          {/* ── Error state ────────────────────────────────────── */}
-          {error && (
-            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">{error}</p>
-            </div>
-          )}
-
-          {/* ── Loading shimmer ────────────────────────────────── */}
-          {isLoading && (
-            <div className="p-3 bg-input-field dark:bg-gray-800/50 rounded-lg">
-              <Shimmer />
-            </div>
-          )}
-
-          {/* ── Result ─────────────────────────────────────────── */}
-          {result && !isLoading && (
-            <div className="space-y-3">
-
-              {/* Result text */}
-              <div className="p-3 bg-input-field dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-ink dark:text-gray-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
-                {result}
-              </div>
-
-              {/* Model badge */}
-              {modelUsed && <ModelBadge modelUsed={modelUsed} isCached={isCached} />}
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                {/* Copy */}
-                <button
-                  id="ai-copy-btn"
-                  onClick={handleCopy}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-muted-text dark:text-cool-grey hover:bg-input-field dark:hover:bg-gray-800 hover:text-slate-ink dark:hover:text-white transition-all"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-soft-green" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-
-                {/* Replace selection / Replace document — grammar, tone, translate only */}
-                {canApply && activeTab !== 'summarize' && (
-                  <button
-                    id="ai-insert-btn"
-                    onClick={handleInsert}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
+            {activeTab === 'translate' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-ink dark:text-white">
+                  Target Language
+                </label>
+                <div className="relative">
+                  <select
+                    id="ai-language-select"
+                    value={targetLanguage}
+                    onChange={e => setTargetLang(e.target.value)}
+                    className="w-full appearance-none bg-input-field dark:bg-gray-800 text-slate-ink dark:text-white text-sm px-3 py-2 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-docsy-blue/40 cursor-pointer"
                   >
-                    <PlusSquare className="w-3.5 h-3.5" />
-                    {insertLabel}
-                  </button>
-                )}
-
-                {/* Append summary — summarize only */}
-                {canApply && activeTab === 'summarize' && (
-                  <button
-                    id="ai-append-btn"
-                    onClick={handleAppend}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
-                  >
-                    <PlusSquare className="w-3.5 h-3.5" />
-                    Append to Document
-                  </button>
-                )}
+                    {LANGUAGES.map(lang => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
+                </div>
               </div>
+            )}
 
-              {/* Viewer notice */}
-              {isViewer && (
-                <p className="text-xs text-muted-text dark:text-cool-grey text-center">
-                  You need editor access to apply AI results.
-                </p>
+            {/* ── Run button ─────────────────────────────────────── */}
+            <button
+              id={`ai-run-${activeTab}`}
+              onClick={handleRun}
+              disabled={!canRun}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                canRun
+                  ? 'bg-docsy-blue text-white hover:opacity-90 shadow-sm hover:shadow-md active:scale-[0.98]'
+                  : 'bg-gray-100 dark:bg-gray-800 text-muted-text dark:text-cool-grey cursor-not-allowed'
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing…
+                </>
+              ) : countdown ? (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Retry in {countdown}s
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  {runLabel}
+                </>
               )}
+            </button>
 
-              {/* Try again */}
-              <button
-                onClick={reset}
-                className="w-full text-xs text-muted-text dark:text-cool-grey hover:text-slate-ink dark:hover:text-white transition-colors py-1"
-              >
-                ↺ Try again with different settings
-              </button>
-            </div>
-          )}
-        </div>
+            {/* ── Error state ────────────────────────────────────── */}
+            {error && (
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">{error}</p>
+              </div>
+            )}
+
+            {/* ── Loading shimmer ────────────────────────────────── */}
+            {isLoading && (
+              <div className="p-3 bg-input-field dark:bg-gray-800/50 rounded-lg">
+                <Shimmer />
+              </div>
+            )}
+
+            {/* ── Result ─────────────────────────────────────────── */}
+            {result && !isLoading && (
+              <div className="space-y-3">
+
+                {/* Result text */}
+                <div className="p-3 bg-input-field dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-ink dark:text-gray-200 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  {result}
+                </div>
+
+                {/* Model badge */}
+                {modelUsed && <ModelBadge modelUsed={modelUsed} isCached={isCached} />}
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  {/* Copy */}
+                  <button
+                    id="ai-copy-btn"
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-muted-text dark:text-cool-grey hover:bg-input-field dark:hover:bg-gray-800 hover:text-slate-ink dark:hover:text-white transition-all"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-soft-green" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+
+                  {/* Replace selection / Replace document — grammar, tone, translate only */}
+                  {canApply && activeTab !== 'summarize' && (
+                    <button
+                      id="ai-insert-btn"
+                      onClick={handleInsert}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
+                    >
+                      <PlusSquare className="w-3.5 h-3.5" />
+                      {insertLabel}
+                    </button>
+                  )}
+
+                  {/* Append summary — summarize only */}
+                  {canApply && activeTab === 'summarize' && (
+                    <button
+                      id="ai-append-btn"
+                      onClick={handleAppend}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-docsy-blue text-white hover:opacity-90 transition-opacity shadow-sm"
+                    >
+                      <PlusSquare className="w-3.5 h-3.5" />
+                      Append to Document
+                    </button>
+                  )}
+                </div>
+
+                {/* Viewer notice */}
+                {isViewer && (
+                  <p className="text-xs text-muted-text dark:text-cool-grey text-center">
+                    You need editor access to apply AI results.
+                  </p>
+                )}
+
+                {/* Try again */}
+                <button
+                  onClick={reset}
+                  className="w-full text-xs text-muted-text dark:text-cool-grey hover:text-slate-ink dark:hover:text-white transition-colors py-1"
+                >
+                  ↺ Try again with different settings
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Footer ───────────────────────────────────────────── */}
         <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">

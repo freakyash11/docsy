@@ -23,7 +23,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001'
 const CLIENT_TIMEOUT_MS = 32_000;
 
 export function useAiActions() {
-  const { getToken } = useAuth();
+  // isSignedIn is used to short-circuit before any network request for guests.
+  // The backend (authMiddleware) is a secondary safety net, but we must never
+  // even attempt the fetch for unauthenticated users — both to avoid wasting
+  // AI credits and to give a clear UX message instead of a confusing 401 error.
+  const { getToken, isSignedIn } = useAuth();
 
   const [isLoading, setIsLoading]   = useState(false);
   const [error, setError]           = useState(null);       // user-facing string or null
@@ -59,6 +63,16 @@ export function useAiActions() {
    * @param {object} [options]      - { tone?, targetLanguage? }
    */
   const run = useCallback(async (action, text, options = {}) => {
+    // ── Guest gate ────────────────────────────────────────────────────
+    // Reject immediately without any network request. The UI should already
+    // prevent guests from reaching this code path, but this is a hard
+    // client-side safety net in case the panel is opened programmatically.
+    if (!isSignedIn) {
+      setError('Sign in to use AI tools.');
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────
+
     // Cancel any previous in-flight request
     if (abortRef.current) {
       abortRef.current.abort();
@@ -95,7 +109,10 @@ export function useAiActions() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Map server error codes to friendly messages
+        // Map server error codes to friendly messages.
+        // NOTE: Viewer users are legitimate callers of AI generation — only the
+        // *apply* step is restricted. A 401 here means auth token failure, not
+        // a viewer-permission issue.
         switch (data.error) {
           case 'RATE_LIMIT_EXCEEDED':
             setRetryAfter(data.retryAfter ?? 60);
@@ -113,8 +130,17 @@ export function useAiActions() {
           case 'MISSING_OPTION':
             setError(data.message || 'A required option is missing.');
             break;
+          case 'UNAUTHORIZED':
+            // Auth token failure — surface a clear message rather than the generic fallback
+            setError('You need to be signed in to use AI features.');
+            break;
           default:
-            setError(data.message || 'Something went wrong. Please try again.');
+            // For HTTP 401 responses that don't carry a typed error code
+            if (response.status === 401) {
+              setError('You need to be signed in to use AI features.');
+            } else {
+              setError(data.message || 'Something went wrong. Please try again.');
+            }
         }
         return;
       }
@@ -140,7 +166,7 @@ export function useAiActions() {
         abortRef.current = null;
       }
     }
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   return {
     isLoading,

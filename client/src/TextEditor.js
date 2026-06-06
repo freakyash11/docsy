@@ -1017,6 +1017,7 @@ export default function TextEditor() {
         quill={quill}
         quillSelection={quillSelection}
         userRole={userRole}
+        isSignedIn={isSignedIn}
       />
     </div>
   );
